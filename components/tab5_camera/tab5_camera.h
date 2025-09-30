@@ -10,7 +10,7 @@
 #include "esp_log.h"
 #include "driver/i2c.h"
 
-// Utiliser la nouvelle API ESP-IDF pour ESP32-P4
+// Utiliser la nouvelle API ESP-IDF 5.x pour ESP32-P4
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
   // Nouveau système de caméra pour ESP-IDF 5.x (ESP32-P4)
   #include "esp_cam_sensor.h"
@@ -19,10 +19,10 @@
   
   // Définir les types si nécessaire
   #ifndef ESP_CAM_SENSOR_PIXFORMAT_RGB565
-    #define ESP_CAM_SENSOR_PIXFORMAT_RGB565 0
-    #define ESP_CAM_SENSOR_PIXFORMAT_YUV422 1
-    #define ESP_CAM_SENSOR_PIXFORMAT_RAW8 2
-    #define ESP_CAM_SENSOR_PIXFORMAT_JPEG 3
+    #define ESP_CAM_SENSOR_PIXFORMAT_RGB565 1
+    #define ESP_CAM_SENSOR_PIXFORMAT_YUV422 2
+    #define ESP_CAM_SENSOR_PIXFORMAT_RAW8 8
+    #define ESP_CAM_SENSOR_PIXFORMAT_JPEG 12
   #endif
 #else
   // Ancienne API esp_camera (non supportée sur P4)
