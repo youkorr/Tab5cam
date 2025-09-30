@@ -1,7 +1,7 @@
 ```
-/config/esphome/
-├── tab5.yaml (votre config)
-└── custom_components/
+
+├── tab5cam 
+└── components/
     └── tab5_camera/
         ├── __init__.py
         ├── tab5_camera.h
