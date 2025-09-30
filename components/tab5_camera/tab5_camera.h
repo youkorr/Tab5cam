@@ -13,9 +13,9 @@
 // Utiliser la nouvelle API ESP-IDF 5.x pour ESP32-P4
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
   // Nouveau système de caméra pour ESP-IDF 5.x (ESP32-P4)
+  // Inclure les headers ESP-IDF directement
   #include "esp_cam_sensor.h"
   #include "esp_sccb_intf.h"
-  #include "esp_sccb_i2c.h"
   
   // Définir les types si nécessaire - utiliser les valeurs correctes de l'enum
   #ifndef ESP_CAM_SENSOR_PIXFORMAT_RGB565
@@ -122,3 +122,17 @@ class Tab5Camera : public Component, public i2c::I2CDevice {
 
 }  // namespace tab5_camera
 }  // namespace esphome
+
+
+
+
+
+
+
+
+
+
+
+
+
+
