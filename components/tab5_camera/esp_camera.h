@@ -279,5 +279,5 @@ bool esp_camera_get_psram_mode(void);
 }
 #endif
 
-#include "img_converters.h"
+//#include "img_converters.h"
 
