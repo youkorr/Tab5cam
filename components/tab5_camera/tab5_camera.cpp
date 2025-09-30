@@ -98,17 +98,24 @@ bool Tab5Camera::init_camera_() {
   // Configuration de la caméra ESP32
   memset(&this->camera_config_, 0, sizeof(camera_config_t));
   
-  // Pins CSI pour ESP32-P4 (dédiées)
+  // Pins pour ESP32-P4
   this->camera_config_.pin_pwdn = -1;
-  this->camera_config_.pin_reset = this->reset_pin_ ? static_cast<InternalGPIOPin*>(this->reset_pin_)->get_pin() : -1;
-  this->camera_config_.pin_xclk = this->ext_clock_pin_ ? static_cast<InternalGPIOPin*>(this->ext_clock_pin_)->get_pin() : 36;
+  this->camera_config_.pin_reset = -1;  // Géré manuellement via reset_pin_
+  
+  // Pin XCLK (MCLK)
+  if (this->ext_clock_pin_ != nullptr) {
+    this->camera_config_.pin_xclk = this->ext_clock_pin_->get_pin();
+  } else {
+    this->camera_config_.pin_xclk = 36;  // GPIO36 par défaut
+  }
   
   // Configuration I2C (SCCB)
   this->camera_config_.pin_sccb_sda = 31;  // GPIO31 CAM_SDA
   this->camera_config_.pin_sccb_scl = 32;  // GPIO32 CAM_SCL
   this->camera_config_.sccb_i2c_port = 0;
   
-  // Pins CSI (interface dédiée sur ESP32-P4, pas de config GPIO)
+  // Pour ESP32-P4 avec interface CSI, les pins de données sont gérées en hardware
+  // On met -1 pour toutes les pins parallèles
   this->camera_config_.pin_d7 = -1;
   this->camera_config_.pin_d6 = -1;
   this->camera_config_.pin_d5 = -1;
@@ -163,40 +170,47 @@ bool Tab5Camera::init_camera_() {
   this->camera_config_.fb_location = CAMERA_FB_IN_PSRAM;
   this->camera_config_.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
   
-  // Initialisation de la caméra
+  // IMPORTANT: Initialisation de la caméra avec esp_camera_init
+  ESP_LOGI(TAG, "Calling esp_camera_init()...");
   esp_err_t err = esp_camera_init(&this->camera_config_);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Camera init failed with error 0x%x", err);
+    ESP_LOGE(TAG, "Camera init failed with error 0x%x (%s)", err, esp_err_to_name(err));
     return false;
   }
   
+  ESP_LOGI(TAG, "esp_camera_init() succeeded");
+  
   // Configuration du capteur
   sensor_t *s = esp_camera_sensor_get();
-  if (s) {
-    s->set_framesize(s, this->camera_config_.frame_size);
-    s->set_quality(s, this->jpeg_quality_);
-    
-    // Réglages additionnels pour SC202CS
-    s->set_brightness(s, 0);     // -2 à 2
-    s->set_contrast(s, 0);       // -2 à 2
-    s->set_saturation(s, 0);     // -2 à 2
-    s->set_whitebal(s, 1);       // 0 = désactivé, 1 = activé
-    s->set_awb_gain(s, 1);       // 0 = désactivé, 1 = activé
-    s->set_gain_ctrl(s, 1);      // 0 = désactivé, 1 = activé
-    s->set_exposure_ctrl(s, 1);  // 0 = désactivé, 1 = activé
-    s->set_aec2(s, 0);           // 0 = désactivé, 1 = activé
-    s->set_ae_level(s, 0);       // -2 à 2
-    s->set_aec_value(s, 300);    // 0 à 1200
-    s->set_gainceiling(s, (gainceiling_t)0);  // 0 à 6
-    s->set_bpc(s, 0);            // 0 = désactivé, 1 = activé
-    s->set_wpc(s, 1);            // 0 = désactivé, 1 = activé
-    s->set_raw_gma(s, 1);        // 0 = désactivé, 1 = activé
-    s->set_lenc(s, 1);           // 0 = désactivé, 1 = activé
-    s->set_hmirror(s, 0);        // 0 = désactivé, 1 = activé
-    s->set_vflip(s, 0);          // 0 = désactivé, 1 = activé
-    s->set_dcw(s, 1);            // 0 = désactivé, 1 = activé
-    s->set_colorbar(s, 0);       // 0 = désactivé, 1 = activé
+  if (s == nullptr) {
+    ESP_LOGE(TAG, "Failed to get camera sensor");
+    return false;
   }
+  
+  ESP_LOGI(TAG, "Configuring camera sensor...");
+  s->set_framesize(s, this->camera_config_.frame_size);
+  s->set_quality(s, this->jpeg_quality_);
+  
+  // Réglages additionnels pour SC202CS
+  s->set_brightness(s, 0);     // -2 à 2
+  s->set_contrast(s, 0);       // -2 à 2
+  s->set_saturation(s, 0);     // -2 à 2
+  s->set_whitebal(s, 1);       // 0 = désactivé, 1 = activé
+  s->set_awb_gain(s, 1);       // 0 = désactivé, 1 = activé
+  s->set_gain_ctrl(s, 1);      // 0 = désactivé, 1 = activé
+  s->set_exposure_ctrl(s, 1);  // 0 = désactivé, 1 = activé
+  s->set_aec2(s, 0);           // 0 = désactivé, 1 = activé
+  s->set_ae_level(s, 0);       // -2 à 2
+  s->set_aec_value(s, 300);    // 0 à 1200
+  s->set_gainceiling(s, (gainceiling_t)0);  // 0 à 6
+  s->set_bpc(s, 0);            // 0 = désactivé, 1 = activé
+  s->set_wpc(s, 1);            // 0 = désactivé, 1 = activé
+  s->set_raw_gma(s, 1);        // 0 = désactivé, 1 = activé
+  s->set_lenc(s, 1);           // 0 = désactivé, 1 = activé
+  s->set_hmirror(s, 0);        // 0 = désactivé, 1 = activé
+  s->set_vflip(s, 0);          // 0 = désactivé, 1 = activé
+  s->set_dcw(s, 1);            // 0 = désactivé, 1 = activé
+  s->set_colorbar(s, 0);       // 0 = désactivé, 1 = activé
   
   ESP_LOGI(TAG, "Camera initialized successfully");
   return true;
@@ -207,12 +221,6 @@ bool Tab5Camera::init_camera_() {
 }
 
 bool Tab5Camera::configure_csi_interface_() {
-  // Configuration de l'interface CSI pour ESP32-P4
-  // Les pins CSI sont dédiées hardware:
-  // - CSI_DATAP0/N0 (CSI_DOP/DON)
-  // - CSI_DATAP1/N1 (CAM_D1P/N)
-  // - CSI_CLKP/N (CAM_CSI_CKP/N)
-  
   ESP_LOGI(TAG, "Configuring CSI interface for ESP32-P4");
   
   // L'ESP32-P4 utilise des pins CSI dédiées matériellement
@@ -255,9 +263,6 @@ bool Tab5Camera::init_sc202cs_sensor_() {
     return false;
   }
   delay(50);  // Attendre la fin du reset
-  
-  // Le reste de la configuration sera géré par le driver esp_camera
-  // qui appliquera les paramètres via sensor_t
   
   ESP_LOGI(TAG, "SC202CS sensor initialized successfully");
   return true;
