@@ -1,115 +1,97 @@
-#pragma once
+import esphome.codegen as cg
+import esphome.config_validation as cv
+from esphome.components import i2c
+from esphome.const import (
+    CONF_ID,
+    CONF_NAME,
+    CONF_FREQUENCY,
+)
+from esphome import pins
 
-#include "esphome/core/component.h"
-#include "esphome/core/hal.h"
-#include "esphome/components/i2c/i2c.h"
-#include <vector>
+CODEOWNERS = ["@youkorr"]
+DEPENDENCIES = ["i2c", "esp32"]
+MULTI_CONF = True
 
-#ifdef USE_ESP32
-#include "esp_err.h"
-#include "esp_log.h"
-#include "driver/i2c.h"
+tab5_camera_ns = cg.esphome_ns.namespace("tab5_camera")
+Tab5Camera = tab5_camera_ns.class_("Tab5Camera", cg.Component, i2c.I2CDevice)
 
-// Utiliser la nouvelle API ESP-IDF pour ESP32-P4
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-#include "esp_cam_sensor.h"
-#include "esp_cam_sensor_types.h"
-#include "esp_sccb_intf.h"
-#include "esp_sccb_i2c.h"
-#else
-#include "esp_camera.h"
-#endif
+# Configuration pour SC202CS
+CONF_RESOLUTION = "resolution"
+CONF_PIXEL_FORMAT = "pixel_format"
+CONF_JPEG_QUALITY = "jpeg_quality"
+CONF_FRAMERATE = "framerate"
+CONF_EXTERNAL_CLOCK_PIN = "external_clock_pin"
+CONF_RESET_PIN = "reset_pin"
+CONF_ADDRESS_SENSOR_SC202CS = "address_sensor_sc202cs"
 
-#endif
+# Résolutions SC202CS (capteur 2MP)
+CAMERA_RESOLUTIONS = {
+    "1080P": 0,
+    "720P": 1,
+    "VGA": 2,
+    "QVGA": 3,
+}
 
-namespace esphome {
-namespace tab5_camera {
+# Formats pixel supportés
+PIXEL_FORMATS = {
+    "RGB565": 0,
+    "YUV422": 1,
+    "RAW8": 2,
+    "JPEG": 3,
+}
 
-enum CameraResolution {
-  CAMERA_1080P = 0,
-  CAMERA_720P = 1,
-  CAMERA_VGA = 2,
-  CAMERA_QVGA = 3,
-};
+CONFIG_SCHEMA = cv.All(
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.declare_id(Tab5Camera),
+            cv.Optional(CONF_NAME, default="Tab5 Camera"): cv.string,
+            cv.Optional(CONF_EXTERNAL_CLOCK_PIN, default=36): pins.gpio_output_pin_schema,
+            cv.Optional(CONF_FREQUENCY, default=24000000): cv.int_range(min=6000000, max=40000000),
+            cv.Optional(CONF_RESET_PIN): pins.gpio_output_pin_schema,
+            cv.Optional(CONF_ADDRESS_SENSOR_SC202CS, default=0x36): cv.i2c_address,
+            cv.Optional(CONF_RESOLUTION, default="VGA"): cv.enum(CAMERA_RESOLUTIONS, upper=True),
+            cv.Optional(CONF_PIXEL_FORMAT, default="RGB565"): cv.enum(PIXEL_FORMATS, upper=True),
+            cv.Optional(CONF_JPEG_QUALITY, default=10): cv.int_range(min=1, max=63),
+            cv.Optional(CONF_FRAMERATE, default=30): cv.int_range(min=1, max=60),
+        }
+    )
+    .extend(cv.COMPONENT_SCHEMA)
+    .extend(i2c.i2c_device_schema(0x36))
+)
 
-enum CameraPixelFormat {
-  CAMERA_RGB565 = 0,
-  CAMERA_YUV422 = 1,
-  CAMERA_RAW8 = 2,
-  CAMERA_JPEG = 3,
-};
-
-class Tab5Camera : public Component, public i2c::I2CDevice {
- public:
-  void setup() override;
-  void loop() override;
-  void dump_config() override;
-  float get_setup_priority() const override { return setup_priority::DATA; }
-
-  // Configuration
-  void set_name(const std::string &name) { this->name_ = name; }
-  void set_external_clock_pin(GPIOPin *pin) { this->ext_clock_pin_ = pin; }
-  void set_external_clock_frequency(uint32_t freq) { this->ext_clock_freq_ = freq; }
-  void set_reset_pin(GPIOPin *pin) { this->reset_pin_ = pin; }
-  void set_sensor_address(uint8_t addr) { this->sensor_address_ = addr; }
-  
-  // Enum setters
-  void set_resolution(CameraResolution res) { this->resolution_ = res; }
-  void set_pixel_format(CameraPixelFormat fmt) { this->pixel_format_ = fmt; }
-  
-  // Integer setters for YAML compatibility
-  void set_resolution(int res) { 
-    this->resolution_ = static_cast<CameraResolution>(res); 
-  }
-  void set_pixel_format(int fmt) { 
-    this->pixel_format_ = static_cast<CameraPixelFormat>(fmt); 
-  }
-  
-  void set_jpeg_quality(uint8_t quality) { this->jpeg_quality_ = quality; }
-  void set_framerate(uint8_t fps) { this->framerate_ = fps; }
-
-  // Méthodes de contrôle
-  bool take_snapshot();
-  bool start_streaming();
-  bool stop_streaming();
-  
-  // Récupération d'image
-  bool get_frame(std::vector<uint8_t> &buffer);
-
- protected:
-  std::string name_;
-  GPIOPin *ext_clock_pin_{nullptr};
-  GPIOPin *reset_pin_{nullptr};
-  uint32_t ext_clock_freq_{24000000};
-  uint8_t sensor_address_{0x36};
-  
-  CameraResolution resolution_{CAMERA_VGA};
-  CameraPixelFormat pixel_format_{CAMERA_RGB565};
-  uint8_t jpeg_quality_{10};
-  uint8_t framerate_{30};
-  
-  bool streaming_{false};
-  bool initialized_{false};
-
-  // Méthodes internes
-  bool init_camera_();
-  bool init_sc202cs_sensor_();
-  bool configure_csi_interface_();
-  bool write_sensor_reg_(uint16_t reg, uint8_t value);
-  bool read_sensor_reg_(uint16_t reg, uint8_t &value);
-  void reset_camera_();
-  
-#ifdef USE_ESP32
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-  // Nouvelle API ESP-IDF 5.x pour ESP32-P4
-  esp_cam_sensor_device_t *cam_device_{nullptr};
-  esp_sccb_io_handle_t sccb_handle_{nullptr};
-#else
-  // Ancienne API pour compatibilité
-  camera_config_t camera_config_;
-#endif
-#endif
-};
-
-}  // namespace tab5_camera
-}  // namespace esphome
+async def to_code(config):
+    var = cg.new_Pvariable(config[CONF_ID])
+    await cg.register_component(var, config)
+    await i2c.register_i2c_device(var, config)
+    
+    cg.add(var.set_name(config[CONF_NAME]))
+    
+    ext_clock_pin = await cg.gpio_pin_expression(config[CONF_EXTERNAL_CLOCK_PIN])
+    cg.add(var.set_external_clock_pin(ext_clock_pin))
+    cg.add(var.set_external_clock_frequency(config[CONF_FREQUENCY]))
+    
+    cg.add(var.set_sensor_address(config[CONF_ADDRESS_SENSOR_SC202CS]))
+    
+    cg.add(var.set_resolution(config[CONF_RESOLUTION]))
+    cg.add(var.set_pixel_format(config[CONF_PIXEL_FORMAT]))
+    cg.add(var.set_jpeg_quality(config[CONF_JPEG_QUALITY]))
+    cg.add(var.set_framerate(config[CONF_FRAMERATE]))
+    
+    if CONF_RESET_PIN in config:
+        reset_pin = await cg.gpio_pin_expression(config[CONF_RESET_PIN])
+        cg.add(var.set_reset_pin(reset_pin))
+    
+    # ============================================================
+    # AJOUT CRITIQUE: Configuration pour ESP32-P4 avec ESP-IDF 5.x
+    # ============================================================
+    
+    # Ajouter les flags de compilation nécessaires
+    cg.add_build_flag("-DBOARD_HAS_PSRAM")
+    cg.add_build_flag("-DCONFIG_CAMERA_CORE0=1")
+    
+    # Ajouter les définitions nécessaires pour ESP32
+    cg.add_define("USE_ESP32")
+    
+    # Pour ESP-IDF 5.x, on utilise les composants natifs au lieu de la bibliothèque externe
+    # Les composants esp_cam_sensor et esp_sccb_intf sont inclus dans ESP-IDF 5.x
+    # Pas besoin d'ajouter de bibliothèque externe
