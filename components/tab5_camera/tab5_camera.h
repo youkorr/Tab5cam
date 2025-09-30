@@ -35,6 +35,7 @@ class Tab5Camera : public Component, public i2c::I2CDevice {
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::DATA; }
 
+  // Configuration
   void set_name(const std::string &name) { this->name_ = name; }
   void set_external_clock_pin(GPIOPin *pin) { this->ext_clock_pin_ = pin; }
   void set_external_clock_frequency(uint32_t freq) { this->ext_clock_freq_ = freq; }
@@ -46,9 +47,12 @@ class Tab5Camera : public Component, public i2c::I2CDevice {
   void set_jpeg_quality(uint8_t quality) { this->jpeg_quality_ = quality; }
   void set_framerate(uint8_t fps) { this->framerate_ = fps; }
 
+  // Méthodes de contrôle
   bool take_snapshot();
   bool start_streaming();
   bool stop_streaming();
+  
+  // Récupération d'image
   bool get_frame(std::vector<uint8_t> &buffer);
 
  protected:
@@ -66,6 +70,7 @@ class Tab5Camera : public Component, public i2c::I2CDevice {
   bool streaming_{false};
   bool initialized_{false};
 
+  // Méthodes internes
   bool init_camera_();
   bool init_sc202cs_sensor_();
   bool configure_csi_interface_();
