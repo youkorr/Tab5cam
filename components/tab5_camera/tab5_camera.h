@@ -6,9 +6,20 @@
 #include <vector>
 
 #ifdef USE_ESP32
-#include "esp_camera.h"
-#include "esp_system.h"
+#include "esp_err.h"
 #include "esp_log.h"
+#include "driver/i2c.h"
+
+// Utiliser la nouvelle API ESP-IDF pour ESP32-P4
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#include "esp_cam_sensor.h"
+#include "esp_cam_sensor_types.h"
+#include "esp_sccb_intf.h"
+#include "esp_sccb_i2c.h"
+#else
+#include "esp_camera.h"
+#endif
+
 #endif
 
 namespace esphome {
@@ -89,7 +100,14 @@ class Tab5Camera : public Component, public i2c::I2CDevice {
   void reset_camera_();
   
 #ifdef USE_ESP32
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+  // Nouvelle API ESP-IDF 5.x pour ESP32-P4
+  esp_cam_sensor_device_t *cam_device_{nullptr};
+  esp_sccb_io_handle_t sccb_handle_{nullptr};
+#else
+  // Ancienne API pour compatibilité
   camera_config_t camera_config_;
+#endif
 #endif
 };
 
