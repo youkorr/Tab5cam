@@ -18,6 +18,7 @@
         ├── sc202cs_sensor.h
         ├── sc202cs_settings.h
         ├── sc202cs_types.h
+        ├── sc202cs_regs.h
         ├── CMakeLists.txt
         └── sensors/
             └── sc202cs/
