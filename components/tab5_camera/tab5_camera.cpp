@@ -87,8 +87,9 @@ bool Tab5Camera::init_camera_() {
   memset(&this->camera_config_, 0, sizeof(camera_config_t));
 
   this->camera_config_.pin_pwdn = -1;
-  this->camera_config_.pin_reset = this->reset_pin_ ? this->reset_pin_->get_pin_number() : -1;
-  this->camera_config_.pin_xclk = this->ext_clock_pin_ ? this->ext_clock_pin_->get_pin_number() : 36;
+  this->camera_config_.pin_reset = this->reset_pin_ ? this->reset_pin_->pin() : -1;
+  this->camera_config_.pin_xclk  = this->ext_clock_pin_ ? this->ext_clock_pin_->pin() : 36;
+
 
   this->camera_config_.pin_sccb_sda = 31;
   this->camera_config_.pin_sccb_scl = 32;
