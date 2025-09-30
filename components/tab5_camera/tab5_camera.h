@@ -42,8 +42,18 @@ class Tab5Camera : public Component, public i2c::I2CDevice {
   void set_reset_pin(GPIOPin *pin) { this->reset_pin_ = pin; }
   void set_sensor_address(uint8_t addr) { this->sensor_address_ = addr; }
   
+  // Enum setters
   void set_resolution(CameraResolution res) { this->resolution_ = res; }
   void set_pixel_format(CameraPixelFormat fmt) { this->pixel_format_ = fmt; }
+  
+  // Integer setters for YAML compatibility
+  void set_resolution(int res) { 
+    this->resolution_ = static_cast<CameraResolution>(res); 
+  }
+  void set_pixel_format(int fmt) { 
+    this->pixel_format_ = static_cast<CameraPixelFormat>(fmt); 
+  }
+  
   void set_jpeg_quality(uint8_t quality) { this->jpeg_quality_ = quality; }
   void set_framerate(uint8_t fps) { this->framerate_ = fps; }
 
