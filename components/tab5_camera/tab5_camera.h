@@ -6,9 +6,9 @@
 #include <vector>
 
 #ifdef USE_ESP32
-#include "driver/gpio.h"
 #include "esp_camera.h"
-#include "soc/soc_caps.h"
+#include "esp_system.h"
+#include "esp_log.h"
 #endif
 
 namespace esphome {
