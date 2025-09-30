@@ -2,11 +2,14 @@
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
 
-// Inclure le driver SC202CS personnalisé si disponible
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-  // Essayer d'inclure le driver SC202CS personnalisé
-  #ifdef CONFIG_CAMERA_SC202CS
-    #include "sc202cs_sensor.h"
+// Inclure le driver SC202CS si disponible
+#ifdef CONFIG_CAMERA_SC202CS
+  #ifdef __cplusplus
+  extern "C" {
+  #endif
+    #include "sc202cs.h"  // Driver SC202CS de M5Stack
+  #ifdef __cplusplus
+  }
   #endif
 #endif
 
@@ -132,18 +135,41 @@ bool Tab5Camera::init_camera_() {
     .xclk_freq_hz = this->ext_clock_freq_,
   };
   
-  ESP_LOGI(TAG, "Creating camera sensor device...");
-  // Essayer avec SC2336 (famille proche du SC2356/SC202CS)
-  ret = esp_cam_sensor_new_sc2336(&cam_config, &this->cam_device_);
-  if (ret != ESP_OK) {
-    ESP_LOGW(TAG, "SC2336 driver failed: %s, trying generic sensor...", esp_err_to_name(ret));
-    // Si SC2336 ne fonctionne pas, il faudra un driver personnalisé pour SC202CS
-    // Pour l'instant, on retourne une erreur
-    ESP_LOGE(TAG, "SC202CS sensor driver not available. You may need to:");
-    ESP_LOGE(TAG, "  1. Use the M5Stack BSP component from their repository");
-    ESP_LOGE(TAG, "  2. Create a custom sensor driver for SC202CS");
+  ESP_LOGI(TAG, "Creating SC202CS camera sensor device...");
+  
+#ifdef CONFIG_CAMERA_SC202CS
+  // Utiliser le driver SC202CS de M5Stack
+  ret = esp_cam_new_sensor_sc202cs(&cam_config, &this->cam_device_);
+  if (ret == ESP_OK) {
+    ESP_LOGI(TAG, "✓ Successfully created SC202CS sensor device");
+  } else {
+    ESP_LOGE(TAG, "✗ Failed to create SC202CS sensor: %s", esp_err_to_name(ret));
     return false;
   }
+#else
+  // Pas de driver SC202CS disponible
+  ESP_LOGE(TAG, "");
+  ESP_LOGE(TAG, "╔════════════════════════════════════════════════════════════════╗");
+  ESP_LOGE(TAG, "║  ERREUR: Driver SC202CS non disponible                        ║");
+  ESP_LOGE(TAG, "╠════════════════════════════════════════════════════════════════╣");
+  ESP_LOGE(TAG, "║  Pour installer le driver SC202CS:                            ║");
+  ESP_LOGE(TAG, "║                                                                ║");
+  ESP_LOGE(TAG, "║  Linux/Mac:                                                    ║");
+  ESP_LOGE(TAG, "║    cd custom_components/tab5_camera                            ║");
+  ESP_LOGE(TAG, "║    chmod +x download_sc202cs_driver.sh                         ║");
+  ESP_LOGE(TAG, "║    ./download_sc202cs_driver.sh                                ║");
+  ESP_LOGE(TAG, "║                                                                ║");
+  ESP_LOGE(TAG, "║  Windows (PowerShell):                                         ║");
+  ESP_LOGE(TAG, "║    cd custom_components\\tab5_camera                           ║");
+  ESP_LOGE(TAG, "║    .\\download_sc202cs_driver.ps1                              ║");
+  ESP_LOGE(TAG, "║                                                                ║");
+  ESP_LOGE(TAG, "║  Ou téléchargez manuellement depuis:                          ║");
+  ESP_LOGE(TAG, "║  https://github.com/m5stack/M5Tab5-UserDemo                   ║");
+  ESP_LOGE(TAG, "║  platforms/tab5/components/esp_cam_sensor/sensors/sc202cs/    ║");
+  ESP_LOGE(TAG, "╚════════════════════════════════════════════════════════════════╝");
+  ESP_LOGE(TAG, "");
+  return false;
+#endif
   
   // 4. Configuration du format et de la résolution
   esp_cam_sensor_format_t sensor_format;
