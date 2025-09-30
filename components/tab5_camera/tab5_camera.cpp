@@ -132,7 +132,7 @@ bool Tab5Camera::init_camera_() {
     .reset_pin = -1,  // Géré manuellement
     .pwdn_pin = -1,
     .xclk_pin = -1,  // Géré par ESPHome
-    .xclk_freq_hz = this->ext_clock_freq_,
+    .xclk_freq_hz = static_cast<int32_t>(this->ext_clock_freq_),  // Fix narrowing conversion
     .sensor_port = ESP_CAM_SENSOR_MIPI_CSI,
   };
   
@@ -173,24 +173,24 @@ bool Tab5Camera::init_camera_() {
 #endif
   
   // 4. Configuration du format et de la résolution
-  esp_cam_sensor_format_t sensor_format;
+  esp_cam_sensor_format_t sensor_format = {};
   
-  // Format pixel - utiliser les valeurs correctes de l'enum
+  // Format pixel - utiliser les valeurs correctes de l'enum avec cast explicite
   switch (this->pixel_format_) {
     case CAMERA_RGB565:
-      sensor_format.format = ESP_CAM_SENSOR_PIXFORMAT_RGB565;
+      sensor_format.format = static_cast<esp_cam_sensor_output_format_t>(ESP_CAM_SENSOR_PIXFORMAT_RGB565);
       break;
     case CAMERA_YUV422:
-      sensor_format.format = ESP_CAM_SENSOR_PIXFORMAT_YUV422;
+      sensor_format.format = static_cast<esp_cam_sensor_output_format_t>(ESP_CAM_SENSOR_PIXFORMAT_YUV422);
       break;
     case CAMERA_RAW8:
-      sensor_format.format = ESP_CAM_SENSOR_PIXFORMAT_RAW8;
+      sensor_format.format = static_cast<esp_cam_sensor_output_format_t>(ESP_CAM_SENSOR_PIXFORMAT_RAW8);
       break;
     case CAMERA_JPEG:
-      sensor_format.format = ESP_CAM_SENSOR_PIXFORMAT_JPEG;
+      sensor_format.format = static_cast<esp_cam_sensor_output_format_t>(ESP_CAM_SENSOR_PIXFORMAT_JPEG);
       break;
     default:
-      sensor_format.format = ESP_CAM_SENSOR_PIXFORMAT_RGB565;
+      sensor_format.format = static_cast<esp_cam_sensor_output_format_t>(ESP_CAM_SENSOR_PIXFORMAT_RGB565);
   }
   
   // Résolution
