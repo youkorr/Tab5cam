@@ -100,7 +100,7 @@ bool Tab5Camera::init_camera_() {
   
   // Pins CSI pour ESP32-P4 (dédiées)
   this->camera_config_.pin_pwdn = -1;
-  this->camera_config_.pin_reset = this->reset_pin_ ? this->reset_pin_->get_Pin() : -1;
+  this->camera_config_.pin_reset = this->reset_pin_ ? static_cast<InternalGPIOPin*>(this->reset_pin_)->get_pin() : -1;
   this->camera_config_.pin_xclk = this->ext_clock_pin_ ? static_cast<InternalGPIOPin*>(this->ext_clock_pin_)->get_pin() : 36;
   
   // Configuration I2C (SCCB)
