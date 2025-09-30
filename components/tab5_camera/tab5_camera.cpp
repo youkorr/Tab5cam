@@ -89,7 +89,7 @@ bool Tab5Camera::init_camera_() {
   
   this->camera_config_.pin_pwdn  = -1;
   this->camera_config_.pin_reset = this->reset_pin_ ? this->reset_pin_->pin() : -1;  
-  this->camera_config_.pin_xclk  = this->external_clock_pin_;  // déjà un uint8_t
+  this->camera_config_.pin_xclk  = this->set_external_clock_pin;  // déjà un uint8_t
 
 
 
