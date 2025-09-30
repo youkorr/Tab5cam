@@ -80,3 +80,20 @@ async def to_code(config):
     if CONF_RESET_PIN in config:
         reset_pin = await cg.gpio_pin_expression(config[CONF_RESET_PIN])
         cg.add(var.set_reset_pin(reset_pin))
+    
+    # ============================================================
+    # AJOUT CRITIQUE: Lier la bibliothèque esp32-camera
+    # ============================================================
+    
+    # Ajouter la bibliothèque esp32-camera
+    cg.add_library("esp32-camera", None)
+    
+    # Ajouter les flags de compilation nécessaires
+    cg.add_build_flag("-DBOARD_HAS_PSRAM")
+    cg.add_build_flag("-DCONFIG_CAMERA_CORE0=1")
+    
+    # Ajouter les définitions nécessaires pour ESP32
+    cg.add_define("USE_ESP32")
+    
+    # Pour ESP-IDF, ajouter les options de configuration
+    cg.add_platformio_option("lib_deps", ["esp32-camera"])
