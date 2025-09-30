@@ -17,12 +17,12 @@
   #include "esp_sccb_intf.h"
   #include "esp_sccb_i2c.h"
   
-  // Définir les types si nécessaire
+  // Définir les types si nécessaire - utiliser les valeurs correctes de l'enum
   #ifndef ESP_CAM_SENSOR_PIXFORMAT_RGB565
-    #define ESP_CAM_SENSOR_PIXFORMAT_RGB565 1
-    #define ESP_CAM_SENSOR_PIXFORMAT_YUV422 2
-    #define ESP_CAM_SENSOR_PIXFORMAT_RAW8 8
-    #define ESP_CAM_SENSOR_PIXFORMAT_JPEG 12
+    #define ESP_CAM_SENSOR_PIXFORMAT_RGB565 ((esp_cam_sensor_output_format_t)1)
+    #define ESP_CAM_SENSOR_PIXFORMAT_YUV422 ((esp_cam_sensor_output_format_t)2)
+    #define ESP_CAM_SENSOR_PIXFORMAT_RAW8 ((esp_cam_sensor_output_format_t)8)
+    #define ESP_CAM_SENSOR_PIXFORMAT_JPEG ((esp_cam_sensor_output_format_t)12)
   #endif
 #else
   // Ancienne API esp_camera (non supportée sur P4)
