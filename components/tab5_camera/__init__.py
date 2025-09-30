@@ -88,9 +88,10 @@ async def to_code(config):
     # Ajouter les flags de compilation nécessaires
     cg.add_build_flag("-DBOARD_HAS_PSRAM")
     cg.add_build_flag("-DCONFIG_CAMERA_CORE0=1")
+    cg.add_build_flag("-DCONFIG_CAMERA_SC202CS=1")
     
-    # Ajouter les définitions nécessaires pour ESP32
-    cg.add_define("USE_ESP32")
+    # NE PAS ajouter USE_ESP32 car ESPHome le définit déjà automatiquement
+    # cg.add_define("USE_ESP32")  # <-- RETIRÉ pour éviter la redéfinition
     
     # Pour ESP-IDF 5.x, on utilise les composants natifs au lieu de la bibliothèque externe
     # Les composants esp_cam_sensor et esp_sccb_intf sont inclus dans ESP-IDF 5.x
