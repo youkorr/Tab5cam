@@ -106,19 +106,8 @@ bool Tab5Camera::init_camera_() {
   // ========================================
   
   // 1. Configuration SCCB (I2C pour le capteur)
-  sccb_i2c_config_t i2c_config = {
-    .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-    .device_address = this->sensor_address_,
-    .scl_speed_hz = 100000,  // 100kHz pour I2C
-    .addr_bits_width = 16,   // SC202CS utilise des adresses 16 bits
-    .val_bits_width = 8,     // Valeurs 8 bits
-  };
-  
-  ESP_LOGI(TAG, "Initializing SCCB interface...");
-  
-  // Note: Dans ESP-IDF 5.x, nous devons créer le bus I2C d'abord
-  // Pour l'instant, nous allons utiliser l'interface I2C d'ESPHome
-  // et configurer le SCCB manuellement
+  // Note: Nous utilisons l'interface I2C d'ESPHome directement
+  // et configurons le SCCB manuellement
   
   // 2. Initialisation du capteur SC202CS via I2C
   if (!this->init_sc202cs_sensor_()) {
@@ -436,4 +425,28 @@ bool Tab5Camera::get_frame(std::vector<uint8_t> &buffer) {
 
 }  // namespace tab5_camera
 }  // namespace esphome
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
