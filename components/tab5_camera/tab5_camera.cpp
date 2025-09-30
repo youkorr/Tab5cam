@@ -86,17 +86,16 @@ bool Tab5Camera::init_camera_() {
 
   memset(&this->camera_config_, 0, sizeof(camera_config_t));
 
-  
-  this->camera_config_.pin_pwdn  = -1;
-  this->camera_config_.pin_reset = this->reset_pin_ ? this->reset_pin_->pin() : -1;  
-  this->camera_config_.pin_xclk  = this->set_external_clock_pin_;  // déjà un uint8_t
+  // Configure camera pins
+  this->camera_config_.pin_pwdn  = -1;  // No power-down pin
+  this->camera_config_.pin_reset = this->reset_pin_ ? this->reset_pin_->get_pin() : -1;  // Reset pin
+  this->camera_config_.pin_xclk  = this->ext_clock_pin_ ? this->ext_clock_pin_->get_pin() : -1;  // External clock pin
 
+  this->camera_config_.pin_sccb_sda = 31;  // I2C SDA pin
+  this->camera_config_.pin_sccb_scl = 32;  // I2C SCL pin
+  this->camera_config_.sccb_i2c_port = 0;  // I2C port
 
-
-  this->camera_config_.pin_sccb_sda = 31;
-  this->camera_config_.pin_sccb_scl = 32;
-  this->camera_config_.sccb_i2c_port = 0;
-
+  // Other pins (default to -1 for unused pins)
   this->camera_config_.pin_d7 = -1;
   this->camera_config_.pin_d6 = -1;
   this->camera_config_.pin_d5 = -1;
@@ -109,10 +108,12 @@ bool Tab5Camera::init_camera_() {
   this->camera_config_.pin_href = -1;
   this->camera_config_.pin_pclk = -1;
 
+  // Configure external clock frequency
   this->camera_config_.xclk_freq_hz = this->ext_clock_freq_;
   this->camera_config_.ledc_timer = LEDC_TIMER_0;
   this->camera_config_.ledc_channel = LEDC_CHANNEL_0;
 
+  // Set pixel format
   switch (this->pixel_format_) {
     case CAMERA_RGB565:
       this->camera_config_.pixel_format = PIXFORMAT_RGB565;
@@ -128,6 +129,7 @@ bool Tab5Camera::init_camera_() {
       break;
   }
 
+  // Set resolution
   switch (this->resolution_) {
     case CAMERA_1080P:
       this->camera_config_.frame_size = FRAMESIZE_HD;
@@ -143,17 +145,20 @@ bool Tab5Camera::init_camera_() {
       break;
   }
 
+  // Set JPEG quality and frame buffer configuration
   this->camera_config_.jpeg_quality = this->jpeg_quality_;
   this->camera_config_.fb_count = 2;
   this->camera_config_.fb_location = CAMERA_FB_IN_PSRAM;
   this->camera_config_.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
 
+  // Initialize the camera driver
   esp_err_t err = esp_camera_init(&this->camera_config_);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Camera init failed with error 0x%x", err);
     return false;
   }
 
+  // Configure sensor settings
   sensor_t *s = esp_camera_sensor_get();
   if (s) {
     s->set_framesize(s, this->camera_config_.frame_size);
