@@ -17,7 +17,7 @@ static const char *const TAG = "tab5_camera";
 #define SC202CS_REG_SOFTWARE_STANDBY 0x0100
 
 void Tab5Camera::setup() {
-  ESP_LOGCONFIG(TAG, "Setting up Tab5 Camera (SC202CS)...");
+  ESP_LOGCONFIG(TAG, "Setting up Tab5 Camera (SC202CS) for ESP32-P4...");
   
   // Configuration de la pin MCLK (GPIO36)
   if (this->ext_clock_pin_ != nullptr) {
@@ -71,6 +71,12 @@ void Tab5Camera::dump_config() {
   ESP_LOGCONFIG(TAG, "  Framerate: %d fps", this->framerate_);
   ESP_LOGCONFIG(TAG, "  JPEG Quality: %d", this->jpeg_quality_);
   
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+  ESP_LOGCONFIG(TAG, "  Using ESP-IDF 5.x Camera API (CSI Interface)");
+#else
+  ESP_LOGCONFIG(TAG, "  Using Legacy ESP Camera API");
+#endif
+  
   if (this->is_failed()) {
     ESP_LOGE(TAG, "  Setup Failed!");
   }
@@ -78,142 +84,127 @@ void Tab5Camera::dump_config() {
 
 bool Tab5Camera::init_camera_() {
 #ifdef USE_ESP32
-  ESP_LOGI(TAG, "Initializing ESP32 Camera...");
+  ESP_LOGI(TAG, "Initializing ESP32-P4 Camera with new API...");
   
   // Reset du capteur
   this->reset_camera_();
   
-  // Configuration de l'interface CSI pour ESP32-P4
-  if (!this->configure_csi_interface_()) {
-    ESP_LOGE(TAG, "Failed to configure CSI interface");
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+  // ========================================
+  // Nouvelle API ESP-IDF 5.x pour ESP32-P4
+  // ========================================
+  
+  // 1. Configuration SCCB (I2C pour le capteur)
+  esp_sccb_i2c_config_t i2c_config = {
+    .scl_speed_hz = 100000,  // 100kHz pour I2C
+    .device_address = this->sensor_address_,
+    .scl_io_num = 32,  // GPIO32 CAM_SCL
+    .sda_io_num = 31,  // GPIO31 CAM_SDA
+  };
+  
+  ESP_LOGI(TAG, "Initializing SCCB interface...");
+  esp_err_t ret = esp_sccb_new_i2c_bus(&i2c_config, &this->sccb_handle_);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to initialize SCCB: %s", esp_err_to_name(ret));
     return false;
   }
   
-  // Initialisation du capteur SC202CS
+  // 2. Initialisation du capteur SC202CS via I2C
   if (!this->init_sc202cs_sensor_()) {
     ESP_LOGE(TAG, "Failed to initialize SC202CS sensor");
     return false;
   }
   
-  // Configuration de la caméra ESP32
-  memset(&this->camera_config_, 0, sizeof(camera_config_t));
+  // 3. Configuration du capteur camera
+  esp_cam_sensor_config_t cam_config = {
+    .sccb_handle = this->sccb_handle_,
+    .reset_pin = -1,  // Géré manuellement
+    .pwdn_pin = -1,
+    .xclk_pin = this->ext_clock_pin_ ? this->ext_clock_pin_->get_pin() : 36,
+    .xclk_freq_hz = this->ext_clock_freq_,
+  };
   
-  // Pins pour ESP32-P4
-  this->camera_config_.pin_pwdn = -1;
-  this->camera_config_.pin_reset = -1;  // Géré manuellement via reset_pin_
-  
-  // Pin XCLK (MCLK)
-  if (this->ext_clock_pin_ != nullptr) {
-    this->camera_config_.pin_xclk = this->ext_clock_pin_->get_pin();
-  } else {
-    this->camera_config_.pin_xclk = 36;  // GPIO36 par défaut
+  ESP_LOGI(TAG, "Creating camera sensor device...");
+  // Essayer avec SC2336 (famille proche du SC2356/SC202CS)
+  ret = esp_cam_sensor_new_sc2336(&cam_config, &this->cam_device_);
+  if (ret != ESP_OK) {
+    ESP_LOGW(TAG, "SC2336 driver failed: %s, trying generic sensor...", esp_err_to_name(ret));
+    // Si SC2336 ne fonctionne pas, il faudra un driver personnalisé pour SC202CS
+    // Pour l'instant, on retourne une erreur
+    ESP_LOGE(TAG, "SC202CS sensor driver not available. You may need to:");
+    ESP_LOGE(TAG, "  1. Use the M5Stack BSP component from their repository");
+    ESP_LOGE(TAG, "  2. Create a custom sensor driver for SC202CS");
+    return false;
   }
   
-  // Configuration I2C (SCCB)
-  this->camera_config_.pin_sccb_sda = 31;  // GPIO31 CAM_SDA
-  this->camera_config_.pin_sccb_scl = 32;  // GPIO32 CAM_SCL
-  this->camera_config_.sccb_i2c_port = 0;
+  // 4. Configuration du format et de la résolution
+  esp_cam_sensor_format_t sensor_format;
   
-  // Pour ESP32-P4 avec interface CSI, les pins de données sont gérées en hardware
-  // On met -1 pour toutes les pins parallèles
-  this->camera_config_.pin_d7 = -1;
-  this->camera_config_.pin_d6 = -1;
-  this->camera_config_.pin_d5 = -1;
-  this->camera_config_.pin_d4 = -1;
-  this->camera_config_.pin_d3 = -1;
-  this->camera_config_.pin_d2 = -1;
-  this->camera_config_.pin_d1 = -1;
-  this->camera_config_.pin_d0 = -1;
-  this->camera_config_.pin_vsync = -1;
-  this->camera_config_.pin_href = -1;
-  this->camera_config_.pin_pclk = -1;
-  
-  // Configuration XCLK
-  this->camera_config_.xclk_freq_hz = this->ext_clock_freq_;
-  this->camera_config_.ledc_timer = LEDC_TIMER_0;
-  this->camera_config_.ledc_channel = LEDC_CHANNEL_0;
-  
-  // Configuration format et résolution
+  // Format pixel
   switch (this->pixel_format_) {
     case CAMERA_RGB565:
-      this->camera_config_.pixel_format = PIXFORMAT_RGB565;
+      sensor_format.format = ESP_CAM_SENSOR_PIXFORMAT_RGB565;
       break;
     case CAMERA_YUV422:
-      this->camera_config_.pixel_format = PIXFORMAT_YUV422;
+      sensor_format.format = ESP_CAM_SENSOR_PIXFORMAT_YUV422;
       break;
     case CAMERA_RAW8:
-      this->camera_config_.pixel_format = PIXFORMAT_GRAYSCALE;
+      sensor_format.format = ESP_CAM_SENSOR_PIXFORMAT_RAW8;
       break;
     case CAMERA_JPEG:
-      this->camera_config_.pixel_format = PIXFORMAT_JPEG;
+      sensor_format.format = ESP_CAM_SENSOR_PIXFORMAT_JPEG;
       break;
+    default:
+      sensor_format.format = ESP_CAM_SENSOR_PIXFORMAT_RGB565;
   }
   
-  // Configuration de la résolution
+  // Résolution
   switch (this->resolution_) {
     case CAMERA_1080P:
-      this->camera_config_.frame_size = FRAMESIZE_HD;  // 1920x1080
+      sensor_format.width = 1920;
+      sensor_format.height = 1080;
       break;
     case CAMERA_720P:
-      this->camera_config_.frame_size = FRAMESIZE_HD;  // 1280x720
+      sensor_format.width = 1280;
+      sensor_format.height = 720;
       break;
     case CAMERA_VGA:
-      this->camera_config_.frame_size = FRAMESIZE_VGA;  // 640x480
+      sensor_format.width = 640;
+      sensor_format.height = 480;
       break;
     case CAMERA_QVGA:
-      this->camera_config_.frame_size = FRAMESIZE_QVGA;  // 320x240
+      sensor_format.width = 320;
+      sensor_format.height = 240;
       break;
   }
   
-  this->camera_config_.jpeg_quality = this->jpeg_quality_;
-  this->camera_config_.fb_count = 2;  // Double buffering
-  this->camera_config_.fb_location = CAMERA_FB_IN_PSRAM;
-  this->camera_config_.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
-  
-  // IMPORTANT: Initialisation de la caméra avec esp_camera_init
-  ESP_LOGI(TAG, "Calling esp_camera_init()...");
-  esp_err_t err = esp_camera_init(&this->camera_config_);
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Camera init failed with error 0x%x (%s)", err, esp_err_to_name(err));
+  ESP_LOGI(TAG, "Setting camera format: %dx%d", sensor_format.width, sensor_format.height);
+  ret = esp_cam_sensor_set_format(this->cam_device_, &sensor_format);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to set camera format: %s", esp_err_to_name(ret));
     return false;
   }
   
-  ESP_LOGI(TAG, "esp_camera_init() succeeded");
-  
-  // Configuration du capteur
-  sensor_t *s = esp_camera_sensor_get();
-  if (s == nullptr) {
-    ESP_LOGE(TAG, "Failed to get camera sensor");
+  // 5. Démarrage du capteur
+  ESP_LOGI(TAG, "Starting camera sensor...");
+  ret = esp_cam_sensor_start(this->cam_device_);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to start camera sensor: %s", esp_err_to_name(ret));
     return false;
   }
   
-  ESP_LOGI(TAG, "Configuring camera sensor...");
-  s->set_framesize(s, this->camera_config_.frame_size);
-  s->set_quality(s, this->jpeg_quality_);
-  
-  // Réglages additionnels pour SC202CS
-  s->set_brightness(s, 0);     // -2 à 2
-  s->set_contrast(s, 0);       // -2 à 2
-  s->set_saturation(s, 0);     // -2 à 2
-  s->set_whitebal(s, 1);       // 0 = désactivé, 1 = activé
-  s->set_awb_gain(s, 1);       // 0 = désactivé, 1 = activé
-  s->set_gain_ctrl(s, 1);      // 0 = désactivé, 1 = activé
-  s->set_exposure_ctrl(s, 1);  // 0 = désactivé, 1 = activé
-  s->set_aec2(s, 0);           // 0 = désactivé, 1 = activé
-  s->set_ae_level(s, 0);       // -2 à 2
-  s->set_aec_value(s, 300);    // 0 à 1200
-  s->set_gainceiling(s, (gainceiling_t)0);  // 0 à 6
-  s->set_bpc(s, 0);            // 0 = désactivé, 1 = activé
-  s->set_wpc(s, 1);            // 0 = désactivé, 1 = activé
-  s->set_raw_gma(s, 1);        // 0 = désactivé, 1 = activé
-  s->set_lenc(s, 1);           // 0 = désactivé, 1 = activé
-  s->set_hmirror(s, 0);        // 0 = désactivé, 1 = activé
-  s->set_vflip(s, 0);          // 0 = désactivé, 1 = activé
-  s->set_dcw(s, 1);            // 0 = désactivé, 1 = activé
-  s->set_colorbar(s, 0);       // 0 = désactivé, 1 = activé
-  
-  ESP_LOGI(TAG, "Camera initialized successfully");
+  ESP_LOGI(TAG, "Camera initialized successfully with new API");
   return true;
+  
+#else
+  // ========================================
+  // Ancienne API pour compatibilité
+  // ========================================
+  ESP_LOGW(TAG, "ESP-IDF < 5.0 detected, using legacy camera API");
+  ESP_LOGE(TAG, "Legacy API not supported for ESP32-P4. Please use ESP-IDF 5.x");
+  return false;
+#endif
+
 #else
   ESP_LOGE(TAG, "Camera only supported on ESP32");
   return false;
@@ -221,12 +212,7 @@ bool Tab5Camera::init_camera_() {
 }
 
 bool Tab5Camera::configure_csi_interface_() {
-  ESP_LOGI(TAG, "Configuring CSI interface for ESP32-P4");
-  
-  // L'ESP32-P4 utilise des pins CSI dédiées matériellement
-  // La configuration se fait automatiquement via esp_camera_init()
-  // Pas besoin de configuration GPIO supplémentaire
-  
+  ESP_LOGI(TAG, "CSI interface is configured automatically by ESP-IDF driver");
   return true;
 }
 
@@ -331,21 +317,28 @@ bool Tab5Camera::take_snapshot() {
   
   ESP_LOGI(TAG, "Taking snapshot...");
   
-  camera_fb_t *fb = esp_camera_fb_get();
-  if (!fb) {
-    ESP_LOGE(TAG, "Failed to capture frame");
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+  esp_cam_sensor_frame_t frame;
+  esp_err_t ret = esp_cam_sensor_get_frame(this->cam_device_, &frame, 1000);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to capture frame: %s", esp_err_to_name(ret));
     return false;
   }
   
   ESP_LOGI(TAG, "Snapshot captured successfully!");
-  ESP_LOGI(TAG, "  Resolution: %dx%d", fb->width, fb->height);
-  ESP_LOGI(TAG, "  Size: %d bytes", fb->len);
-  ESP_LOGI(TAG, "  Format: %d", fb->format);
+  ESP_LOGI(TAG, "  Resolution: %dx%d", frame.width, frame.height);
+  ESP_LOGI(TAG, "  Size: %d bytes", frame.data_size);
+  ESP_LOGI(TAG, "  Format: %d", frame.format);
   
-  // Libération du framebuffer
-  esp_camera_fb_return(fb);
+  // Libération du frame
+  esp_cam_sensor_return_frame(this->cam_device_, &frame);
   
   return true;
+#else
+  ESP_LOGE(TAG, "Legacy API not supported");
+  return false;
+#endif
+
 #else
   ESP_LOGE(TAG, "Camera not supported on this platform");
   return false;
@@ -386,19 +379,25 @@ bool Tab5Camera::get_frame(std::vector<uint8_t> &buffer) {
     return false;
   }
   
-  camera_fb_t *fb = esp_camera_fb_get();
-  if (!fb) {
-    ESP_LOGE(TAG, "Failed to get frame");
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+  esp_cam_sensor_frame_t frame;
+  esp_err_t ret = esp_cam_sensor_get_frame(this->cam_device_, &frame, 1000);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to get frame: %s", esp_err_to_name(ret));
     return false;
   }
   
   // Copier les données dans le buffer
-  buffer.assign(fb->buf, fb->buf + fb->len);
+  buffer.assign(frame.data, frame.data + frame.data_size);
   
-  // Libérer le framebuffer
-  esp_camera_fb_return(fb);
+  // Libérer le frame
+  esp_cam_sensor_return_frame(this->cam_device_, &frame);
   
   return true;
+#else
+  return false;
+#endif
+
 #else
   return false;
 #endif
