@@ -2,6 +2,14 @@
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
 
+// Inclure le driver SC202CS personnalisé si disponible
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+  // Essayer d'inclure le driver SC202CS personnalisé
+  #ifdef CONFIG_CAMERA_SC202CS
+    #include "sc202cs_sensor.h"
+  #endif
+#endif
+
 namespace esphome {
 namespace tab5_camera {
 
