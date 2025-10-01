@@ -3,16 +3,21 @@
 idf_component_register(
     SRCS 
         "tab5_camera.cpp"
+        "esp_cam_sensor.c"
+        "esp_sccb_i2c.c"
+        "esp_cam_sensor_detect.c"
         "sensors/sc202cs/sc202cs.c"
+        "sensors/sc202cs/sc202cs_settings.c"
     INCLUDE_DIRS 
         "."
         "sensors/sc202cs"
         "sensors/sc202cs/private_include"
     REQUIRES 
-        driver 
-        esp_driver_cam 
-        esp_cam_sensor 
-        sccb_intf
+        driver
+        esp_timer
+        freertos
+        esp_driver_i2c
+        esp_mm
     PRIV_REQUIRES 
         esp_psram
 )
