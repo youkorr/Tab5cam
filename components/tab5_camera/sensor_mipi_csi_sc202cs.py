@@ -184,7 +184,7 @@ INIT_SEQUENCE = [
     (0x3e02, 0xe0, 0),  # Exposition L
     # Gain: augmenté significativement pour plus de luminosité
     (0x3e06, 0x00, 0),  # Gain coarse
-    (0x3e07, 0x80, 0),  # Gain fine
+    #(0x3e07, 0x80, 0),  # Gain fine
     (0x3e09, 0x00, 0),  # Gain analogique - AUGMENTÉ (0x20 = gain ~4x)
     (0x4509, 0x28, 0),
     (0x450d, 0x61, 0),
