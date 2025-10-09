@@ -58,25 +58,26 @@ def load_sensors():
     except Exception as e:
         logger.error(f"Error loading SC202CS: {e}")
     
-    # OV5640
-    try:
-        from .sensor_mipi_csi_ov5640 import get_sensor_info, get_driver_code
-        AVAILABLE_SENSORS['ov5640'] = {
-            'info': get_sensor_info(),
-            'driver': get_driver_code
-        }
-        logger.info("✓ OV5640 sensor loaded")
-    except ImportError as e:
-        logger.warning(f"OV5640 sensor not available: {e}")
-    except Exception as e:
-        logger.error(f"Error loading OV5640: {e}")
-    
-    # Ajouter d'autres sensors ici automatiquement
+    # Pour ajouter un nouveau sensor, créez simplement sensor_mipi_csi_XXX.py
+    # avec les fonctions get_sensor_info() et get_driver_code()
+    # puis ajoutez son import ici :
+    #
+    # try:
+    #     from .sensor_mipi_csi_XXX import get_sensor_info, get_driver_code
+    #     AVAILABLE_SENSORS['xxx'] = {
+    #         'info': get_sensor_info(),
+    #         'driver': get_driver_code
+    #     }
+    #     logger.info("✓ XXX sensor loaded")
+    # except ImportError as e:
+    #     logger.warning(f"XXX sensor not available: {e}")
+    # except Exception as e:
+    #     logger.error(f"Error loading XXX: {e}")
     
     if not AVAILABLE_SENSORS:
         raise cv.Invalid(
             "Aucun sensor MIPI disponible. "
-            "Assurez-vous que sensor_mipi_csi_XXX.py est dans components/tab5_camera/"
+            "Assurez-vous que sensor_mipi_csi_sc202cs.py est dans components/tab5_camera/"
         )
     
     logger.info(f"Sensors disponibles: {', '.join(AVAILABLE_SENSORS.keys())}")
@@ -169,31 +170,75 @@ async def to_code(config):
         cg.add(var.set_reset_pin(reset_pin))
     
     # ========================================================================
-    # GÉNÉRATION DU CODE DU DRIVER
+    # GÉNÉRATION DU CODE DU DRIVER ET DE LA FONCTION FACTORY
     # ========================================================================
     
-    # Récupérer le code généré du sensor
-    driver_code_func = AVAILABLE_SENSORS[sensor_name]['driver']
-    driver_code = driver_code_func()
+    # Générer le code de TOUS les sensors disponibles
+    all_drivers_code = ""
+    all_factory_conditions = []
     
-    # Créer le fichier header du driver généré
-    driver_filename = f"sensor_{sensor_name}_generated.h"
+    for sensor_id, sensor_data in AVAILABLE_SENSORS.items():
+        # Ajouter le driver
+        driver_code_func = sensor_data['driver']
+        all_drivers_code += driver_code_func() + "\n\n"
+        
+        # Collecter les conditions pour la factory
+        if hasattr(sensor_data.get('driver'), '__self__'):
+            # Si le module a une fonction get_factory_code
+            try:
+                from . import sensor_mipi_csi_sc202cs
+                if sensor_id == 'sc202cs':
+                    all_factory_conditions.append(sensor_mipi_csi_sc202cs.get_factory_code())
+            except:
+                pass
     
-    # Ajouter le code généré comme fichier global
-    cg.add_global(cg.RawExpression(driver_code))
+    # Générer la fonction factory globale
+    factory_code = f'''
+namespace esphome {{
+namespace tab5_camera {{
+
+// =============================================================================
+// FONCTION FACTORY GLOBALE
+// Créée automatiquement depuis tous les sensors disponibles
+// =============================================================================
+
+ISensorDriver* create_sensor_driver(const std::string& sensor_type, i2c::I2CDevice* i2c) {{
+'''
+    
+    # Ajouter les conditions pour chaque sensor
+    for sensor_id in AVAILABLE_SENSORS.keys():
+        sensor_upper = sensor_id.upper()
+        factory_code += f'''
+    if (sensor_type == "{sensor_id}") {{
+        return new {sensor_upper}Adapter(i2c);
+    }}
+'''
+    
+    factory_code += f'''
+    
+    // Sensor non trouvé
+    ESP_LOGE("tab5_camera", "Unknown sensor type: %s", sensor_type.c_str());
+    return nullptr;
+}}
+
+}}  // namespace tab5_camera
+}}  // namespace esphome
+'''
+    
+    # Combiner tout le code
+    complete_code = all_drivers_code + factory_code
+    
+    # Ajouter le code généré
+    cg.add_global(cg.RawExpression(complete_code))
     
     # Build flags pour ESP32-P4
     cg.add_build_flag("-DBOARD_HAS_PSRAM")
     cg.add_build_flag("-DCONFIG_CAMERA_CORE0=1")
     cg.add_build_flag("-DUSE_ESP32_VARIANT_ESP32P4")
     
-    # Flag pour indiquer quel sensor est utilisé
-    sensor_flag = f"-DSENSOR_{sensor_name.upper()}"
-    cg.add_build_flag(sensor_flag)
-    
     # Log pour debug
     cg.add(cg.RawExpression(f'''
-        ESP_LOGI("compile", "Sensor driver generated: {sensor_name}");
-        ESP_LOGI("compile", "Resolution: {sensor_info['width']}x{sensor_info['height']}");
-        ESP_LOGI("compile", "Lanes: {sensor_info['lane_count']}");
+        ESP_LOGI("compile", "✓ Sensor driver generated: {sensor_name}");
+        ESP_LOGI("compile", "  Resolution: {sensor_info['width']}x{sensor_info['height']}");
+        ESP_LOGI("compile", "  Available sensors: {', '.join(AVAILABLE_SENSORS.keys())}");
     '''))
