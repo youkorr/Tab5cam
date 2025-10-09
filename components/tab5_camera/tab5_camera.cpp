@@ -2,8 +2,9 @@
 #include "esphome/core/log.h"
 #include "esphome/core/application.h"
 
-// Les drivers auto-générés sont inclus via le système de build
-// Chaque sensor génère sa propre implémentation de create_sensor_driver()
+// Inclusion du code généré pour les drivers
+// Ce fichier sera créé automatiquement par __init__.py
+#include "tab5_camera_drivers_generated.h"
 
 #ifdef USE_ESP32_VARIANT_ESP32P4
 
