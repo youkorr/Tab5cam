@@ -6,9 +6,6 @@
 #include <string>
 
 #ifdef USE_ESP32_VARIANT_ESP32P4
-// Forward declarations
-struct esp_cam_sensor_device_t;
-
 extern "C" {
   #include "esp_cam_ctlr.h"
   #include "esp_cam_ctlr_csi.h"
@@ -20,22 +17,42 @@ extern "C" {
 namespace esphome {
 namespace tab5_camera {
 
-// Uniquement 720P supporté
-enum CameraResolution {
-  RESOLUTION_720P = 0,
-};
-
+// Enum pour format pixel
 enum PixelFormat {
   PIXEL_FORMAT_RGB565 = 0,
   PIXEL_FORMAT_YUV422 = 1,
   PIXEL_FORMAT_RAW8 = 2,
 };
 
-struct CameraResolutionInfo {
-  uint16_t width;
-  uint16_t height;
+// Interface abstraite pour les drivers de sensors
+// Chaque sensor auto-généré implémente cette interface
+class ISensorDriver {
+public:
+  virtual ~ISensorDriver() = default;
+  
+  // Métadonnées
+  virtual const char* get_name() const = 0;
+  virtual uint16_t get_pid() const = 0;
+  virtual uint8_t get_i2c_address() const = 0;
+  virtual uint8_t get_lane_count() const = 0;
+  virtual uint8_t get_bayer_pattern() const = 0;
+  virtual uint16_t get_lane_bitrate_mbps() const = 0;
+  virtual uint16_t get_width() const = 0;
+  virtual uint16_t get_height() const = 0;
+  virtual uint8_t get_fps() const = 0;
+  
+  // Opérations
+  virtual esp_err_t init() = 0;
+  virtual esp_err_t read_id(uint16_t* pid) = 0;
+  virtual esp_err_t start_stream() = 0;
+  virtual esp_err_t stop_stream() = 0;
+  virtual esp_err_t set_gain(uint32_t gain_index) = 0;
+  virtual esp_err_t set_exposure(uint32_t exposure) = 0;
+  virtual esp_err_t write_register(uint16_t reg, uint8_t value) = 0;
+  virtual esp_err_t read_register(uint16_t reg, uint8_t* value) = 0;
 };
 
+// Classe principale - réceptacle générique
 class Tab5Camera : public Component, public i2c::I2CDevice {
  public:
   void setup() override;
@@ -48,42 +65,45 @@ class Tab5Camera : public Component, public i2c::I2CDevice {
   void set_external_clock_pin(uint8_t pin) { this->external_clock_pin_ = pin; }
   void set_external_clock_frequency(uint32_t freq) { this->external_clock_frequency_ = freq; }
   void set_reset_pin(GPIOPin *pin) { this->reset_pin_ = pin; }
-  void set_pwdn_pin(GPIOPin *pin) { this->pwdn_pin_ = pin; }
   void set_sensor_type(const std::string &type) { this->sensor_type_ = type; }
-  void set_sensor_address(uint8_t address) { this->sensor_address_ = address; }
+  void set_sensor_address(uint8_t addr) { this->sensor_address_ = addr; }
   void set_lane_count(uint8_t lanes) { this->lane_count_ = lanes; }
   void set_bayer_pattern(uint8_t pattern) { this->bayer_pattern_ = pattern; }
+  void set_lane_bitrate(uint16_t mbps) { this->lane_bitrate_mbps_ = mbps; }
+  void set_resolution(uint16_t w, uint16_t h) { this->width_ = w; this->height_ = h; }
   void set_pixel_format(PixelFormat format) { this->pixel_format_ = format; }
   void set_jpeg_quality(uint8_t quality) { this->jpeg_quality_ = quality; }
   void set_framerate(uint8_t fps) { this->framerate_ = fps; }
 
-  // Opérations
+  // Opérations caméra
   bool capture_frame();
   bool start_streaming();
   bool stop_streaming();
   bool is_streaming() const { return this->streaming_; }
   
-  // Accès données - toujours 1280x720
+  // Accès données
   uint8_t* get_image_data() { return this->current_frame_buffer_; }
   size_t get_image_size() const { return this->frame_buffer_size_; }
-  uint16_t get_image_width() const { return 1280; }
-  uint16_t get_image_height() const { return 720; }
+  uint16_t get_image_width() const { return this->width_; }
+  uint16_t get_image_height() const { return this->height_; }
 
  protected:
   // Configuration matérielle
   uint8_t external_clock_pin_{36};
   uint32_t external_clock_frequency_{24000000};
   GPIOPin *reset_pin_{nullptr};
-  GPIOPin *pwdn_pin_{nullptr};
   
-  // Configuration sensor
+  // Configuration sensor (auto depuis le driver)
   std::string sensor_type_{"sc202cs"};
   uint8_t sensor_address_{0x36};
   uint8_t lane_count_{1};
-  uint8_t bayer_pattern_{3};  // BGGR par défaut
+  uint8_t bayer_pattern_{3};
+  uint16_t lane_bitrate_mbps_{576};
+  uint16_t width_{1280};
+  uint16_t height_{720};
   
   // Configuration format
-  std::string name_{"Tab5 Camera"};
+  std::string name_{"MIPI Camera"};
   PixelFormat pixel_format_{PIXEL_FORMAT_RGB565};
   uint8_t jpeg_quality_{10};
   uint8_t framerate_{30};
@@ -99,12 +119,15 @@ class Tab5Camera : public Component, public i2c::I2CDevice {
   size_t frame_buffer_size_{0};
   uint8_t buffer_index_{0};
   
+  // Driver du sensor (créé dynamiquement)
+  ISensorDriver *sensor_driver_{nullptr};
+  
 #ifdef USE_ESP32_VARIANT_ESP32P4
-  esp_cam_sensor_device_t *sensor_device_{nullptr};
   esp_cam_ctlr_handle_t csi_handle_{nullptr};
   isp_proc_handle_t isp_handle_{nullptr};
   esp_ldo_channel_handle_t ldo_handle_{nullptr};
   
+  bool create_sensor_driver_();
   bool init_sensor_();
   bool init_ldo_();
   bool init_csi_();
