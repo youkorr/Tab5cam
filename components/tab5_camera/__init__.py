@@ -42,28 +42,44 @@ AVAILABLE_SENSORS = {}
 # Importer dynamiquement les sensors disponibles
 def load_sensors():
     """Charge tous les sensors disponibles"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # SC202CS
     try:
-        from ..sensor_mipi_csi_sc202cs import get_sensor_info, get_driver_code
+        from .sensor_mipi_csi_sc202cs import get_sensor_info, get_driver_code
         AVAILABLE_SENSORS['sc202cs'] = {
             'info': get_sensor_info(),
             'driver': get_driver_code
         }
-    except ImportError:
-        pass
+        logger.info("✓ SC202CS sensor loaded")
+    except ImportError as e:
+        logger.warning(f"SC202CS sensor not available: {e}")
+    except Exception as e:
+        logger.error(f"Error loading SC202CS: {e}")
     
+    # OV5640
     try:
-        from ..sensor_mipi_csi_ov5640 import get_sensor_info, get_driver_code
+        from .sensor_mipi_csi_ov5640 import get_sensor_info, get_driver_code
         AVAILABLE_SENSORS['ov5640'] = {
             'info': get_sensor_info(),
             'driver': get_driver_code
         }
-    except ImportError:
-        pass
+        logger.info("✓ OV5640 sensor loaded")
+    except ImportError as e:
+        logger.warning(f"OV5640 sensor not available: {e}")
+    except Exception as e:
+        logger.error(f"Error loading OV5640: {e}")
     
     # Ajouter d'autres sensors ici automatiquement
     
     if not AVAILABLE_SENSORS:
-        raise cv.Invalid("Aucun sensor MIPI disponible. Installez au moins un sensor_mipi_csi_XXX.py")
+        raise cv.Invalid(
+            "Aucun sensor MIPI disponible. "
+            "Assurez-vous que sensor_mipi_csi_XXX.py est dans components/tab5_camera/"
+        )
+    
+    logger.info(f"Sensors disponibles: {', '.join(AVAILABLE_SENSORS.keys())}")
 
 # Charger les sensors au démarrage
 load_sensors()
