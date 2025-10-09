@@ -158,7 +158,7 @@ void LVGLCameraDisplay::set_fullscreen(bool fullscreen) {
     this->apply_canvas_size_(this->minimized_size_);
     this->is_fullscreen_ = false;
     this->is_minimized_ = true;
-    ESP_LOGI(TAG, "Mode: MINIMIZED (640x480)");
+    ESP_LOGI(TAG, "Mode: MINIMIZED (760x440)");
   }
 }
 
