@@ -24,8 +24,10 @@ enum PixelFormat {
   PIXEL_FORMAT_RAW8 = 2,
 };
 
-// Interface abstraite pour les drivers de sensors
+// ============================================================================
+// INTERFACE ABSTRAITE POUR LES DRIVERS DE SENSORS
 // Chaque sensor auto-généré implémente cette interface
+// ============================================================================
 class ISensorDriver {
 public:
   virtual ~ISensorDriver() = default;
@@ -52,7 +54,16 @@ public:
   virtual esp_err_t read_register(uint16_t reg, uint8_t* value) = 0;
 };
 
-// Classe principale - réceptacle générique
+// ============================================================================
+// FACTORY FUNCTION - Déclarée ici, implémentée par le code généré
+// Chaque sensor généré fournit son implémentation de cette fonction
+// ============================================================================
+extern ISensorDriver* create_sensor_driver(const std::string& sensor_type, i2c::I2CDevice* i2c);
+
+// ============================================================================
+// CLASSE PRINCIPALE - RÉCEPTACLE GÉNÉRIQUE
+// Ne contient AUCUNE référence aux sensors spécifiques
+// ============================================================================
 class Tab5Camera : public Component, public i2c::I2CDevice {
  public:
   void setup() override;
@@ -93,8 +104,8 @@ class Tab5Camera : public Component, public i2c::I2CDevice {
   uint32_t external_clock_frequency_{24000000};
   GPIOPin *reset_pin_{nullptr};
   
-  // Configuration sensor (auto depuis le driver)
-  std::string sensor_type_{"sc202cs"};
+  // Configuration sensor (depuis le YAML)
+  std::string sensor_type_{""};
   uint8_t sensor_address_{0x36};
   uint8_t lane_count_{1};
   uint8_t bayer_pattern_{3};
@@ -119,7 +130,7 @@ class Tab5Camera : public Component, public i2c::I2CDevice {
   size_t frame_buffer_size_{0};
   uint8_t buffer_index_{0};
   
-  // Driver du sensor (créé dynamiquement)
+  // Driver du sensor (créé dynamiquement via factory)
   ISensorDriver *sensor_driver_{nullptr};
   
 #ifdef USE_ESP32_VARIANT_ESP32P4
