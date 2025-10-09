@@ -19,7 +19,7 @@ static const char *const TAG = "tab5_camera";
 // Include du driver généré (le nom du fichier dépend du sensor)
 // Ceci sera injecté par le système de build selon sensor_type_
 #ifdef SENSOR_SC202CS
-  #include "sensor_sc202cs_generated.h"
+  //#include "sensor_sc202cs_generated.h"
   using namespace esphome::mipi_camera;
   
   class SC202CSAdapter : public ISensorDriver {
