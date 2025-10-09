@@ -55,10 +55,11 @@ public:
 };
 
 // ============================================================================
-// FACTORY FUNCTION - Déclarée ici, implémentée par le code généré
-// Chaque sensor généré fournit son implémentation de cette fonction
+// FACTORY FUNCTION - Définie dans tab5_camera_drivers_generated.h
+// Chaque sensor généré fournit son implémentation via cette fonction inline
 // ============================================================================
-extern ISensorDriver* create_sensor_driver(const std::string& sensor_type, i2c::I2CDevice* i2c);
+// La déclaration n'est plus nécessaire ici car la fonction est inline
+// et définie dans tab5_camera_drivers_generated.h
 
 // ============================================================================
 // CLASSE PRINCIPALE - RÉCEPTACLE GÉNÉRIQUE
