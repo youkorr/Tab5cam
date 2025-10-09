@@ -178,6 +178,8 @@ async def to_code(config):
     # GÉNÉRATION DU CODE DU DRIVER ET DE LA FONCTION FACTORY
     # ========================================================================
     
+    import os
+    
     # Générer le code de TOUS les sensors disponibles
     all_drivers_code = ""
     
@@ -221,8 +223,15 @@ ISensorDriver* create_sensor_driver(const std::string& sensor_type, i2c::I2CDevi
     # Combiner tout le code
     complete_code = all_drivers_code + factory_code
     
-    # Ajouter le code généré
-    cg.add_global(cg.RawExpression(complete_code))
+    # Écrire le fichier généré physiquement
+    component_dir = os.path.dirname(__file__)
+    generated_file_path = os.path.join(component_dir, "tab5_camera_drivers_generated.h")
+    
+    with open(generated_file_path, 'w') as f:
+        f.write("// FICHIER AUTO-GÉNÉRÉ - NE PAS MODIFIER MANUELLEMENT\n")
+        f.write("// Généré par __init__.py lors de la compilation ESPHome\n\n")
+        f.write("#pragma once\n\n")
+        f.write(complete_code)
     
     # Build flags pour ESP32-P4
     cg.add_build_flag("-DBOARD_HAS_PSRAM")
