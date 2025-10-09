@@ -145,6 +145,11 @@ bool Tab5Camera::init_sensor_() {
   }
   
   ESP_LOGI(TAG, "✓ Sensor initialized");
+  
+  // Attendre que le sensor se stabilise (exposition, gain, etc.)
+  delay(200);
+  ESP_LOGI(TAG, "✓ Sensor stabilized");
+  
   return true;
 }
 
@@ -178,7 +183,7 @@ bool Tab5Camera::init_csi_() {
   csi_config.input_data_color_type = CAM_CTLR_COLOR_RAW8;
   csi_config.output_data_color_type = CAM_CTLR_COLOR_RGB565;
   csi_config.data_lane_num = this->lane_count_;
-  csi_config.byte_swap_en = false;
+  csi_config.byte_swap_en = true;  // Activé pour corriger l'ordre des bytes RGB565
   csi_config.queue_items = 2;
   
   esp_err_t ret = esp_cam_new_csi_ctlr(&csi_config, &this->csi_handle_);
@@ -240,7 +245,7 @@ bool Tab5Camera::init_isp_() {
     return false;
   }
   
-  ESP_LOGI(TAG, "✓ ISP OK (bayer=%u)", this->bayer_pattern_);
+  ESP_LOGI(TAG, "✓ ISP OK (bayer=%u, luminosité/contraste via sensor)", this->bayer_pattern_);
   return true;
 }
 
