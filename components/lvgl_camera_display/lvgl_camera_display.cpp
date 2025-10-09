@@ -11,12 +11,12 @@ void LVGLCameraDisplay::setup() {
   ESP_LOGCONFIG(TAG, "🎥 Configuration LVGL Camera Display...");
   
   if (this->camera_ == nullptr) {
-    ESP_LOGE(TAG, "❌ Camera non configurée");
+    ESP_LOGE(TAG, "Camera non configurée");
     this->mark_failed();
     return;
   }
   
-  ESP_LOGI(TAG, "✅ LVGL Camera Display initialisé");
+  ESP_LOGI(TAG, "LVGL Camera Display initialisé");
   ESP_LOGI(TAG, "   Update interval: %u ms (~%d FPS)", 
            this->update_interval_, 1000 / this->update_interval_);
   ESP_LOGI(TAG, "   Fullscreen: %ux%u", this->fullscreen_size_.width, this->fullscreen_size_.height);
@@ -67,7 +67,7 @@ void LVGLCameraDisplay::update_canvas_() {
   
   if (this->canvas_obj_ == nullptr) {
     if (!this->canvas_warning_shown_) {
-      ESP_LOGW(TAG, "❌ Canvas null - pas encore configuré?");
+      ESP_LOGW(TAG, "Canvas null - pas encore configuré?");
       this->canvas_warning_shown_ = true;
     }
     return;
@@ -106,7 +106,7 @@ void LVGLCameraDisplay::update_canvas_() {
 
 void LVGLCameraDisplay::configure_canvas(lv_obj_t *canvas) { 
   this->canvas_obj_ = canvas;
-  ESP_LOGI(TAG, "🎨 Canvas configuré: %p", canvas);
+  ESP_LOGI(TAG, "Canvas configuré: %p", canvas);
   
   if (canvas != nullptr) {
     // Vérifier les propriétés du canvas
@@ -158,7 +158,7 @@ void LVGLCameraDisplay::set_fullscreen(bool fullscreen) {
     this->apply_canvas_size_(this->minimized_size_);
     this->is_fullscreen_ = false;
     this->is_minimized_ = true;
-    ESP_LOGI(TAG, "📺 Mode: MINIMIZED (760x440)");
+    ESP_LOGI(TAG, "Mode: MINIMIZED (640x480)");
   }
 }
 
