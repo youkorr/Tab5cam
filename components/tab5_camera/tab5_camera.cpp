@@ -212,7 +212,7 @@ bool Tab5Camera::init_csi_() {
 bool Tab5Camera::init_isp_() {
   ESP_LOGI(TAG, "Init ISP");
   
-  uint32_t isp_clock_hz = 240000000;
+  uint32_t isp_clock_hz = 140000000;
   
   esp_isp_processor_cfg_t isp_config = {};
   isp_config.clk_src = ISP_CLK_SRC_DEFAULT;
