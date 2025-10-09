@@ -82,6 +82,19 @@ def load_sensors():
         logger.warning(f"SC2336 sensor not available: {e}")
     except Exception as e:
         logger.error(f"Error loading SC2336: {e}")
+
+        # ov5647
+    try:
+        from .sensor_mipi_csi_ov5647 import get_sensor_info, get_driver_code
+        AVAILABLE_SENSORS['ov5647'] = {
+            'info': get_sensor_info(),
+            'driver': get_driver_code
+        }
+        logger.info("✓ ov5647 sensor loaded")
+    except ImportError as e:
+        logger.warning(f"ov5647 sensor not available: {e}")
+    except Exception as e:
+        logger.error(f"Error loading ov5647: {e}")
     
     # Pour ajouter un nouveau sensor, créez sensor_mipi_csi_XXX.py
     # avec les fonctions get_sensor_info() et get_driver_code()
