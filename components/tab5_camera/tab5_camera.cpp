@@ -17,7 +17,7 @@ static const char *const TAG = "tab5_camera";
 
 void Tab5Camera::setup() {
   ESP_LOGI(TAG, " Init MIPI Camera");
-  ESP_LOGI(TAG, "   Sensor type: %s", this->sensor_type_.c_str());
+  ESP_LOGI(TAG, " Sensor type: %s", this->sensor_type_.c_str());
   
   // 1. Init pins
   if (this->reset_pin_ != nullptr) {
@@ -30,7 +30,7 @@ void Tab5Camera::setup() {
   
   // 2. Créer le driver du sensor via factory
   if (!this->create_sensor_driver_()) {
-    ESP_LOGE(TAG, "❌ Driver creation failed");
+    ESP_LOGE(TAG, " Driver creation failed");
     this->mark_failed();
     return;
   }
@@ -58,7 +58,7 @@ void Tab5Camera::setup() {
   
   // 6. Init ISP
   if (!this->init_isp_()) {
-    ESP_LOGE(TAG, "❌ ISP init failed");
+    ESP_LOGE(TAG, " ISP init failed");
     this->mark_failed();
     return;
   }
@@ -370,7 +370,7 @@ void Tab5Camera::loop() {
       float sensor_fps = this->total_frames_received_ / 3.0f;
       float ready_rate = (float)ready_count / (float)(ready_count + not_ready_count) * 100.0f;
       
-      ESP_LOGI(TAG, "📷 Sensor: %.1f fps | frame_ready: %.1f%% du temps", 
+      ESP_LOGI(TAG, " Sensor: %.1f fps | frame_ready: %.1f%% du temps", 
                sensor_fps, ready_rate);
       
       this->total_frames_received_ = 0;
