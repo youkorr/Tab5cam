@@ -180,12 +180,12 @@ INIT_SEQUENCE = [
     # Exposition et gain optimisés pour meilleure luminosité et contraste
     # Exposition: augmentée pour plus de lumière
     (0x3e00, 0x00, 0),  # Exposition H
-    (0x3e01, 0x5d, 0),  # Exposition M - AUGMENTÉE pour plus de lumière
+    (0x3e01, 0x4d, 0),  # Exposition M - AUGMENTÉE pour plus de lumière
     (0x3e02, 0xe0, 0),  # Exposition L
     # Gain: augmenté significativement pour plus de luminosité
     (0x3e06, 0x00, 0),  # Gain coarse
     (0x3e07, 0x80, 0),  # Gain fine
-    (0x3e09, 0x10, 0),  # Gain analogique - AUGMENTÉ (0x20 = gain ~4x)
+    (0x3e09, 0x00, 0),  # Gain analogique - AUGMENTÉ (0x20 = gain ~4x)
     (0x4509, 0x28, 0),
     (0x450d, 0x61, 0),
 ]
