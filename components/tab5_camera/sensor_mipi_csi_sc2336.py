@@ -11,7 +11,7 @@ Inclut le driver, l'adapter et la fonction factory
 SENSOR_INFO = {
     'name': 'sc2336',
     'manufacturer': 'SmartSens',
-    'pid': 0xcb3a,0xeb52,
+    'pid': 0xeb52, #0xcb3a
     'i2c_address': 0x36,
     'lane_count': 2,
     'bayer_pattern': 3,  # BGGR
