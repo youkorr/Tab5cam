@@ -18,7 +18,7 @@ static const char *const TAG = "tab5_camera";
 // ============================================================================
 
 void Tab5Camera::setup() {
-  ESP_LOGI(TAG, "🎥 Init MIPI Camera");
+  ESP_LOGI(TAG, " Init MIPI Camera");
   ESP_LOGI(TAG, "   Sensor type: %s", this->sensor_type_.c_str());
   
   // 1. Init pins
@@ -39,21 +39,21 @@ void Tab5Camera::setup() {
   
   // 3. Init sensor
   if (!this->init_sensor_()) {
-    ESP_LOGE(TAG, "❌ Sensor init failed");
+    ESP_LOGE(TAG, " Sensor init failed");
     this->mark_failed();
     return;
   }
   
   // 4. Init LDO
   if (!this->init_ldo_()) {
-    ESP_LOGE(TAG, "❌ LDO init failed");
+    ESP_LOGE(TAG, " LDO init failed");
     this->mark_failed();
     return;
   }
   
   // 5. Init CSI
   if (!this->init_csi_()) {
-    ESP_LOGE(TAG, "❌ CSI init failed");
+    ESP_LOGE(TAG, " CSI init failed");
     this->mark_failed();
     return;
   }
@@ -67,13 +67,13 @@ void Tab5Camera::setup() {
   
   // 7. Allouer buffers
   if (!this->allocate_buffer_()) {
-    ESP_LOGE(TAG, "❌ Buffer alloc failed");
+    ESP_LOGE(TAG, " Buffer alloc failed");
     this->mark_failed();
     return;
   }
   
   this->initialized_ = true;
-  ESP_LOGI(TAG, "✅ Camera ready (%ux%u)", this->width_, this->height_);
+  ESP_LOGI(TAG, " Camera ready (%ux%u)", this->width_, this->height_);
 }
 
 bool Tab5Camera::create_sensor_driver_() {
@@ -318,7 +318,7 @@ bool Tab5Camera::start_streaming() {
   }
   
   this->streaming_ = true;
-  ESP_LOGI(TAG, "✅ Streaming active");
+  ESP_LOGI(TAG, " Streaming active");
   return true;
 }
 
