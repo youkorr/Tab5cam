@@ -51,8 +51,8 @@ class LVGLCameraDisplay : public Component {
   };
   
   CanvasSize fullscreen_size_{1280, 720, 0, 0, 0};
-  CanvasSize minimized_size_{760, 440, 141, 0, 12};
-  CanvasSize current_size_{760, 440, 141, 0, 12};
+  CanvasSize minimized_size_{760, 440, 320, 100, 8};
+  CanvasSize current_size_{760, 440, 320, 100, 8};
   
   void update_canvas_();
   void apply_canvas_size_(const CanvasSize &size);
