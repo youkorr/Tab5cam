@@ -183,8 +183,8 @@ bool Tab5Camera::init_csi_() {
   csi_config.input_data_color_type = CAM_CTLR_COLOR_RAW8;
   csi_config.output_data_color_type = CAM_CTLR_COLOR_RGB565;
   csi_config.data_lane_num = this->lane_count_;
-  csi_config.byte_swap_en = true;  // Activé pour corriger l'ordre des bytes RGB565
-  csi_config.queue_items = 2;
+  csi_config.byte_swap_en = false;  // REMIS À FALSE (défaut)
+  csi_config.queue_items = 10;  // AUGMENTÉ de 2 à 10 pour garder plus de frames
   
   esp_err_t ret = esp_cam_new_csi_ctlr(&csi_config, &this->csi_handle_);
   if (ret != ESP_OK) {
@@ -210,7 +210,7 @@ bool Tab5Camera::init_csi_() {
     return false;
   }
   
-  ESP_LOGI(TAG, "✓ CSI OK");
+  ESP_LOGI(TAG, "✓ CSI OK (queue_items=10 pour meilleur buffering)");
   return true;
 }
 
@@ -292,6 +292,7 @@ bool IRAM_ATTR Tab5Camera::on_csi_frame_done_(
   if (trans->received_size > 0) {
     cam->frame_ready_ = true;
     cam->buffer_index_ = (cam->buffer_index_ + 1) % 2;
+    cam->total_frames_received_++;  // Compteur pour debug
   }
   
   return false;
@@ -303,6 +304,10 @@ bool Tab5Camera::start_streaming() {
   }
   
   ESP_LOGI(TAG, "Start streaming");
+  
+  // Reset compteurs
+  this->total_frames_received_ = 0;
+  this->last_frame_log_time_ = millis();
   
   // Démarrer sensor
   if (this->sensor_driver_) {
@@ -361,6 +366,50 @@ bool Tab5Camera::capture_frame() {
 
 void Tab5Camera::loop() {
   // Géré par callbacks ISR
+  
+  // Debug: Logger le FPS du sensor ET le flag frame_ready
+  if (this->streaming_) {
+    static uint32_t ready_count = 0;
+    static uint32_t not_ready_count = 0;
+    
+    if (this->frame_ready_) {
+      ready_count++;
+    } else {
+      not_ready_count++;
+    }
+    
+    uint32_t now = millis();
+    if (now - this->last_frame_log_time_ >= 3000) {  // Toutes les 3 secondes
+      float sensor_fps = this->total_frames_received_ / 3.0f;
+      float ready_rate = (float)ready_count / (float)(ready_count + not_ready_count) * 100.0f;
+      
+      ESP_LOGI(TAG, "📷 Sensor: %.1f fps | frame_ready: %.1f%% du temps", 
+               sensor_fps, ready_rate);
+      
+      this->total_frames_received_ = 0;
+      this->last_frame_log_time_ = now;
+      ready_count = 0;
+      not_ready_count = 0;
+    }
+  }
+}
+
+#endif  // USE_ESP32_VARIANT_ESP32P4
+
+void Tab5Camera::loop() {
+  // Géré par callbacks ISR
+  
+  // Debug: Logger le FPS du sensor
+  if (this->streaming_) {
+    uint32_t now = millis();
+    if (now - this->last_frame_log_time_ >= 3000) {  // Toutes les 3 secondes
+      float sensor_fps = this->total_frames_received_ / 3.0f;
+      ESP_LOGI(TAG, "📷 Sensor FPS: %.1f frames/sec (production du sensor)", sensor_fps);
+      
+      this->total_frames_received_ = 0;
+      this->last_frame_log_time_ = now;
+    }
+  }
 }
 
 void Tab5Camera::dump_config() {
@@ -382,7 +431,6 @@ void Tab5Camera::dump_config() {
 }  // namespace esphome
 
 #endif  // USE_ESP32_VARIANT_ESP32P4
-
 
 
 
