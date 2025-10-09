@@ -13,7 +13,7 @@ SENSOR_INFO = {
     'manufacturer': 'SmartSens',
     'pid': 0xeb52,
     'i2c_address': 0x36,
-    'lane_count': 1,
+    'lane_count': 2,
     'bayer_pattern': 3,  # BGGR
     'lane_bitrate_mbps': 576,
     'width': 1280,
