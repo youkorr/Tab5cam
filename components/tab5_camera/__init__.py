@@ -70,6 +70,19 @@ def load_sensors():
     except Exception as e:
         logger.error(f"Error loading SC202CS: {e}")
     
+    # SC2336
+    try:
+        from .sensor_mipi_csi_sc2336 import get_sensor_info, get_driver_code
+        AVAILABLE_SENSORS['sc2336'] = {
+            'info': get_sensor_info(),
+            'driver': get_driver_code
+        }
+        logger.info("✓ SC2336 sensor loaded")
+    except ImportError as e:
+        logger.warning(f"SC2336 sensor not available: {e}")
+    except Exception as e:
+        logger.error(f"Error loading SC2336: {e}")
+    
     # Pour ajouter un nouveau sensor, créez sensor_mipi_csi_XXX.py
     # avec les fonctions get_sensor_info() et get_driver_code()
     # puis ajoutez son import ici
@@ -77,7 +90,7 @@ def load_sensors():
     if not AVAILABLE_SENSORS:
         raise cv.Invalid(
             "Aucun sensor MIPI disponible. "
-            "Assurez-vous que sensor_mipi_csi_sc202cs.py est dans components/tab5_camera/"
+            "Assurez-vous que les fichiers sensor_mipi_csi_*.py sont dans components/tab5_camera/"
         )
     
     logger.info(f"Sensors disponibles: {', '.join(AVAILABLE_SENSORS.keys())}")
