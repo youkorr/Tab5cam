@@ -8,10 +8,10 @@ namespace lvgl_camera_display {
 static const char *const TAG = "lvgl_camera_display";
 
 void LVGLCameraDisplay::setup() {
-  ESP_LOGCONFIG(TAG, "🎥 Configuration LVGL Camera Display...");
+  ESP_LOGCONFIG(TAG, "Configuration LVGL Camera Display...");
 
   if (this->camera_ == nullptr) {
-    ESP_LOGE(TAG, "❌ Camera non configurée");
+    ESP_LOGE(TAG, "Camera non configurée");
     this->mark_failed();
     return;
   }
@@ -19,7 +19,7 @@ void LVGLCameraDisplay::setup() {
   // Intervalle pour 30 FPS
   this->update_interval_ = 33;  // ms
 
-  ESP_LOGI(TAG, "✅ LVGL Camera Display initialisé");
+  ESP_LOGI(TAG, "LVGL Camera Display initialisé");
   ESP_LOGI(TAG, "   Update interval: %u ms (~%d FPS)", 
            this->update_interval_, 1000 / this->update_interval_);
 }
@@ -50,7 +50,7 @@ void LVGLCameraDisplay::loop() {
         if (last_time > 0) {
           float elapsed = (now_time - last_time) / 1000.0f;  // secondes
           float fps = 100.0f / elapsed;
-          ESP_LOGI(TAG, "🎞️ %u frames affichées - FPS moyen: %.2f", this->frame_count_, fps);
+          ESP_LOGI(TAG, "  %u frames affichées - FPS moyen: %.2f", this->frame_count_, fps);
         }
         last_time = now_time;
       }
@@ -72,7 +72,7 @@ void LVGLCameraDisplay::update_canvas_() {
 
   if (this->canvas_obj_ == nullptr) {
     if (!this->canvas_warning_shown_) {
-      ESP_LOGW(TAG, "❌ Canvas null - pas encore configuré?");
+      ESP_LOGW(TAG, "Canvas null - pas encore configuré?");
       this->canvas_warning_shown_ = true;
     }
     return;
@@ -87,7 +87,7 @@ void LVGLCameraDisplay::update_canvas_() {
   }
 
   if (this->first_update_) {
-    ESP_LOGI(TAG, "🖼️  Premier update canvas:");
+    ESP_LOGI(TAG, "   Premier update canvas:");
     ESP_LOGI(TAG, "   Dimensions: %ux%u", width, height);
     ESP_LOGI(TAG, "   Buffer: %p", img_data);
     ESP_LOGI(TAG, "   Premiers pixels (RGB565): %02X%02X %02X%02X %02X%02X", 
@@ -101,7 +101,7 @@ void LVGLCameraDisplay::update_canvas_() {
 
 void LVGLCameraDisplay::configure_canvas(lv_obj_t *canvas) { 
   this->canvas_obj_ = canvas;
-  ESP_LOGI(TAG, "🎨 Canvas configuré: %p", canvas);
+  ESP_LOGI(TAG, "  Canvas configuré: %p", canvas);
 
   if (canvas != nullptr) {
     lv_coord_t w = lv_obj_get_width(canvas);
