@@ -21,8 +21,6 @@ void Tab5Camera::setup() {
   ESP_LOGI(TAG, "🎥 Init MIPI Camera");
   ESP_LOGI(TAG, "   Sensor type: %s", this->sensor_type_.c_str());
   
-#ifdef USE_ESP32_VARIANT_ESP32P4
-  
   // 1. Init pins
   if (this->reset_pin_ != nullptr) {
     this->reset_pin_->setup();
@@ -76,14 +74,7 @@ void Tab5Camera::setup() {
   
   this->initialized_ = true;
   ESP_LOGI(TAG, "✅ Camera ready (%ux%u)", this->width_, this->height_);
-  
-#else
-  ESP_LOGE(TAG, "❌ ESP32-P4 required");
-  this->mark_failed();
-#endif
 }
-
-#ifdef USE_ESP32_VARIANT_ESP32P4
 
 bool Tab5Camera::create_sensor_driver_() {
   ESP_LOGI(TAG, "Creating driver for: %s", this->sensor_type_.c_str());
@@ -183,8 +174,8 @@ bool Tab5Camera::init_csi_() {
   csi_config.input_data_color_type = CAM_CTLR_COLOR_RAW8;
   csi_config.output_data_color_type = CAM_CTLR_COLOR_RGB565;
   csi_config.data_lane_num = this->lane_count_;
-  csi_config.byte_swap_en = false;  // REMIS À FALSE (défaut)
-  csi_config.queue_items = 10;  // AUGMENTÉ de 2 à 10 pour garder plus de frames
+  csi_config.byte_swap_en = false;
+  csi_config.queue_items = 10;
   
   esp_err_t ret = esp_cam_new_csi_ctlr(&csi_config, &this->csi_handle_);
   if (ret != ESP_OK) {
@@ -292,7 +283,7 @@ bool IRAM_ATTR Tab5Camera::on_csi_frame_done_(
   if (trans->received_size > 0) {
     cam->frame_ready_ = true;
     cam->buffer_index_ = (cam->buffer_index_ + 1) % 2;
-    cam->total_frames_received_++;  // Compteur pour debug
+    cam->total_frames_received_++;
   }
   
   return false;
@@ -377,7 +368,7 @@ void Tab5Camera::loop() {
     }
     
     uint32_t now = millis();
-    if (now - this->last_frame_log_time_ >= 3000) {  // Toutes les 3 secondes
+    if (now - this->last_frame_log_time_ >= 3000) {
       float sensor_fps = this->total_frames_received_ / 3.0f;
       float ready_rate = (float)ready_count / (float)(ready_count + not_ready_count) * 100.0f;
       
@@ -411,7 +402,6 @@ void Tab5Camera::dump_config() {
 
 }  // namespace tab5_camera
 }  // namespace esphome
-
 
 
 
