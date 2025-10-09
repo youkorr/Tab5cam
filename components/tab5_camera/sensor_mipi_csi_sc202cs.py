@@ -396,10 +396,7 @@ public:
             static_cast<uint8_t>(reg & 0xFF)
         }};
         
-        esphome::i2c::ErrorCode err = i2c_->write(addr, 2, false);
-        if (err != esphome::i2c::ERROR_OK) return ESP_FAIL;
-        
-        err = i2c_->read(value, 1);
+        esphome::i2c::ErrorCode err = i2c_->write_read(addr, 2, value, 1);
         return (err == esphome::i2c::ERROR_OK) ? ESP_OK : ESP_FAIL;
     }}
     
