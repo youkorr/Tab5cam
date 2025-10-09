@@ -125,6 +125,10 @@ class Tab5Camera : public Component, public i2c::I2CDevice {
   bool streaming_{false};
   bool frame_ready_{false};
   
+  // Debug: compteurs de frames
+  uint32_t total_frames_received_{0};
+  uint32_t last_frame_log_time_{0};
+  
   // Buffers
   uint8_t *frame_buffers_[2]{nullptr, nullptr};
   uint8_t *current_frame_buffer_{nullptr};
@@ -162,7 +166,6 @@ class Tab5Camera : public Component, public i2c::I2CDevice {
 
 }  // namespace tab5_camera
 }  // namespace esphome
-
 
 
 
