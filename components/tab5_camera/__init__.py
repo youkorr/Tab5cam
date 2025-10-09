@@ -5,6 +5,7 @@ from esphome.const import (
     CONF_ID,
     CONF_NAME,
     CONF_FREQUENCY,
+    CONF_ADDRESS,
 )
 from esphome import pins
 
@@ -19,6 +20,9 @@ Tab5Camera = tab5_camera_ns.class_("Tab5Camera", cg.Component, i2c.I2CDevice)
 CONF_EXTERNAL_CLOCK_PIN = "external_clock_pin"
 CONF_RESET_PIN = "reset_pin"
 CONF_SENSOR = "sensor"
+CONF_LANE = "lane"
+CONF_ADDRESS_SENSOR = "address_sensor"
+CONF_RESOLUTION = "resolution"
 CONF_PIXEL_FORMAT = "pixel_format"
 CONF_FRAMERATE = "framerate"
 CONF_JPEG_QUALITY = "jpeg_quality"
@@ -35,8 +39,16 @@ PIXEL_FORMATS = {
     "RAW8": PIXEL_FORMAT_RAW8,
 }
 
+# Résolutions supportées (pour l'instant uniquement 720P)
+RESOLUTIONS = {
+    "720P": (1280, 720),
+    # Autres résolutions à ajouter plus tard:
+    # "1080P": (1920, 1080),
+    # "VGA": (640, 480),
+    # "QVGA": (320, 240),
+}
+
 # Dictionnaire des sensors disponibles
-# Chaque sensor a son module Python qui génère son driver
 AVAILABLE_SENSORS = {}
 
 # Importer dynamiquement les sensors disponibles
@@ -58,21 +70,9 @@ def load_sensors():
     except Exception as e:
         logger.error(f"Error loading SC202CS: {e}")
     
-    # Pour ajouter un nouveau sensor, créez simplement sensor_mipi_csi_XXX.py
+    # Pour ajouter un nouveau sensor, créez sensor_mipi_csi_XXX.py
     # avec les fonctions get_sensor_info() et get_driver_code()
-    # puis ajoutez son import ici :
-    #
-    # try:
-    #     from .sensor_mipi_csi_XXX import get_sensor_info, get_driver_code
-    #     AVAILABLE_SENSORS['xxx'] = {
-    #         'info': get_sensor_info(),
-    #         'driver': get_driver_code
-    #     }
-    #     logger.info("✓ XXX sensor loaded")
-    # except ImportError as e:
-    #     logger.warning(f"XXX sensor not available: {e}")
-    # except Exception as e:
-    #     logger.error(f"Error loading XXX: {e}")
+    # puis ajoutez son import ici
     
     if not AVAILABLE_SENSORS:
         raise cv.Invalid(
@@ -94,42 +94,44 @@ def validate_sensor(value):
         )
     return value
 
-def auto_configure_from_sensor(config):
-    """Configure automatiquement depuis les infos du sensor"""
-    sensor_name = config[CONF_SENSOR]
-    sensor_info = AVAILABLE_SENSORS[sensor_name]['info']
-    
-    # Auto-config depuis le sensor
-    if 'address' not in config:
-        config['address'] = sensor_info['i2c_address']
-    
-    # Stocker les infos du sensor
-    config['_sensor_info'] = sensor_info
-    config['_sensor_name'] = sensor_name
-    
-    return config
+def validate_resolution(value):
+    """Valide la résolution (pour l'instant uniquement 720P)"""
+    if isinstance(value, str):
+        value_upper = value.upper()
+        if value_upper not in RESOLUTIONS:
+            available = ', '.join(RESOLUTIONS.keys())
+            raise cv.Invalid(
+                f"Résolution '{value}' non supportée. Disponibles: {available}"
+            )
+        return RESOLUTIONS[value_upper]
+    raise cv.Invalid("Le format de résolution doit être une chaîne (ex: '720P')")
 
-CONFIG_SCHEMA = cv.All(
-    cv.Schema(
-        {
-            cv.GenerateID(): cv.declare_id(Tab5Camera),
-            cv.Optional(CONF_NAME, default="MIPI Camera"): cv.string,
-            cv.Optional(CONF_EXTERNAL_CLOCK_PIN, default=36): cv.Any(
-                cv.int_range(min=0, max=50),
-                pins.internal_gpio_output_pin_schema
-            ),
-            cv.Optional(CONF_FREQUENCY, default=24000000): cv.int_range(min=6000000, max=40000000),
-            cv.Optional(CONF_RESET_PIN): pins.gpio_output_pin_schema,
-            cv.Required(CONF_SENSOR): validate_sensor,
-            cv.Optional(CONF_PIXEL_FORMAT, default="RGB565"): cv.enum(PIXEL_FORMATS, upper=True),
-            cv.Optional(CONF_JPEG_QUALITY, default=10): cv.int_range(min=1, max=63),
-            cv.Optional(CONF_FRAMERATE, default=30): cv.int_range(min=1, max=60),
-        }
-    )
-    .extend(cv.COMPONENT_SCHEMA)
-    .extend(i2c.i2c_device_schema(0x36)),
-    auto_configure_from_sensor
-)
+CONFIG_SCHEMA = cv.Schema(
+    {
+        cv.GenerateID(): cv.declare_id(Tab5Camera),
+        cv.Optional(CONF_NAME, default="Tab5 Camera"): cv.string,
+        
+        # Pins et horloge
+        cv.Optional(CONF_EXTERNAL_CLOCK_PIN, default=36): cv.Any(
+            cv.int_range(min=0, max=50),
+            pins.internal_gpio_output_pin_schema
+        ),
+        cv.Optional(CONF_FREQUENCY, default=24000000): cv.int_range(min=6000000, max=40000000),
+        cv.Optional(CONF_RESET_PIN): pins.gpio_output_pin_schema,
+        
+        # Configuration sensor - CONTRÔLE MANUEL
+        cv.Required(CONF_SENSOR): validate_sensor,
+        cv.Optional(CONF_LANE, default=1): cv.int_range(min=1, max=4),
+        cv.Optional(CONF_ADDRESS_SENSOR, default=0x36): cv.i2c_address,
+        cv.Optional(CONF_RESOLUTION, default="720P"): validate_resolution,
+        
+        # Format et qualité
+        cv.Optional(CONF_PIXEL_FORMAT, default="RGB565"): cv.enum(PIXEL_FORMATS, upper=True),
+        cv.Optional(CONF_FRAMERATE, default=30): cv.int_range(min=1, max=60),
+        cv.Optional(CONF_JPEG_QUALITY, default=10): cv.int_range(min=1, max=63),
+    }
+).extend(cv.COMPONENT_SCHEMA).extend(i2c.i2c_device_schema(0x36))
+
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
@@ -148,16 +150,19 @@ async def to_code(config):
     
     cg.add(var.set_external_clock_frequency(config[CONF_FREQUENCY]))
     
-    # Configuration du sensor
-    sensor_name = config['_sensor_name']
-    sensor_info = config['_sensor_info']
+    # Configuration du sensor - DEPUIS LE YAML
+    sensor_name = config[CONF_SENSOR]
+    width, height = config[CONF_RESOLUTION]
     
     cg.add(var.set_sensor_type(sensor_name))
-    cg.add(var.set_sensor_address(sensor_info['i2c_address']))
-    cg.add(var.set_lane_count(sensor_info['lane_count']))
+    cg.add(var.set_sensor_address(config[CONF_ADDRESS_SENSOR]))
+    cg.add(var.set_lane_count(config[CONF_LANE]))
+    cg.add(var.set_resolution(width, height))
+    
+    # Récupérer les infos du sensor pour les métadonnées nécessaires
+    sensor_info = AVAILABLE_SENSORS[sensor_name]['info']
     cg.add(var.set_bayer_pattern(sensor_info['bayer_pattern']))
     cg.add(var.set_lane_bitrate(sensor_info['lane_bitrate_mbps']))
-    cg.add(var.set_resolution(sensor_info['width'], sensor_info['height']))
     
     # Format
     cg.add(var.set_pixel_format(config[CONF_PIXEL_FORMAT]))
@@ -175,22 +180,10 @@ async def to_code(config):
     
     # Générer le code de TOUS les sensors disponibles
     all_drivers_code = ""
-    all_factory_conditions = []
     
     for sensor_id, sensor_data in AVAILABLE_SENSORS.items():
-        # Ajouter le driver
         driver_code_func = sensor_data['driver']
         all_drivers_code += driver_code_func() + "\n\n"
-        
-        # Collecter les conditions pour la factory
-        if hasattr(sensor_data.get('driver'), '__self__'):
-            # Si le module a une fonction get_factory_code
-            try:
-                from . import sensor_mipi_csi_sc202cs
-                if sensor_id == 'sc202cs':
-                    all_factory_conditions.append(sensor_mipi_csi_sc202cs.get_factory_code())
-            except:
-                pass
     
     # Générer la fonction factory globale
     factory_code = f'''
@@ -238,7 +231,11 @@ ISensorDriver* create_sensor_driver(const std::string& sensor_type, i2c::I2CDevi
     
     # Log pour debug
     cg.add(cg.RawExpression(f'''
-        ESP_LOGI("compile", "✓ Sensor driver generated: {sensor_name}");
-        ESP_LOGI("compile", "  Resolution: {sensor_info['width']}x{sensor_info['height']}");
-        ESP_LOGI("compile", "  Available sensors: {', '.join(AVAILABLE_SENSORS.keys())}");
+        ESP_LOGI("compile", "✓ Camera configuration:");
+        ESP_LOGI("compile", "  Sensor: {sensor_name}");
+        ESP_LOGI("compile", "  Resolution: {width}x{height}");
+        ESP_LOGI("compile", "  Lanes: {config[CONF_LANE]}");
+        ESP_LOGI("compile", "  Address: 0x{config[CONF_ADDRESS_SENSOR]:02X}");
+        ESP_LOGI("compile", "  Format: {config[CONF_PIXEL_FORMAT]}");
+        ESP_LOGI("compile", "  FPS: {config[CONF_FRAMERATE]}");
     '''))
