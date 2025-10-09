@@ -1,6 +1,7 @@
 """
 Sensor SC202CS pour MIPI-CSI
 Génère automatiquement TOUT le driver C++ depuis les données Python
+Inclut le driver, l'adapter et la fonction factory
 """
 
 # ============================================================================
@@ -105,7 +106,6 @@ INIT_SEQUENCE = [
 # TABLE DE GAIN
 # ============================================================================
 
-# Valeurs absolues de gain x1000 (pour éviter les décimales)
 GAIN_VALUES = [
     # 1X
     1000, 1031, 1063, 1094, 1125, 1156, 1188, 1219,
@@ -122,10 +122,8 @@ GAIN_VALUES = [
     5000, 5124, 5252, 5376, 5500, 5624, 5752, 5876,
     6000, 6124, 6252, 6376, 6500, 6624, 6752, 6876,
     7000, 7124, 7252, 7376, 7500, 7624, 7752, 7876,
-    # 8X, 16X, 32X... (à compléter si nécessaire)
 ]
 
-# Mapping gain index -> (fine, coarse, analog)
 GAIN_REGISTERS = [
     # 1X (analog=0x00)
     (0x80, 0x00, 0x00), (0x84, 0x00, 0x00), (0x88, 0x00, 0x00), (0x8c, 0x00, 0x00),
@@ -145,15 +143,14 @@ GAIN_REGISTERS = [
     (0xd0, 0x00, 0x01), (0xd4, 0x00, 0x01), (0xd8, 0x00, 0x01), (0xdc, 0x00, 0x01),
     (0xe0, 0x00, 0x01), (0xe4, 0x00, 0x01), (0xe8, 0x00, 0x01), (0xec, 0x00, 0x01),
     (0xf0, 0x00, 0x01), (0xf4, 0x00, 0x01), (0xf8, 0x00, 0x01), (0xfc, 0x00, 0x01),
-    # Continuer pour 4X, 8X, etc...
 ]
 
 # ============================================================================
-# GÉNÉRATION DU DRIVER C++
+# GÉNÉRATION DU DRIVER C++ COMPLET
 # ============================================================================
 
 def generate_driver_cpp():
-    """Génère le code C++ complet du driver SC202CS"""
+    """Génère le code C++ complet: driver + adapter + factory"""
     
     cpp_code = f'''
 // =============================================================================
@@ -167,39 +164,15 @@ def generate_driver_cpp():
 #include <cstdint>
 #include "esp_err.h"
 #include "esphome/components/i2c/i2c.h"
+#include "tab5_camera.h"
 
 namespace esphome {{
-namespace mipi_camera {{
+namespace tab5_camera {{
 
-// Structure pour les métadonnées du sensor
-struct SensorMetadata {{
-    const char* name;
-    const char* manufacturer;
-    uint16_t pid;
-    uint8_t i2c_address;
-    uint8_t lane_count;
-    uint8_t bayer_pattern;
-    uint16_t lane_bitrate_mbps;
-    uint16_t width;
-    uint16_t height;
-    uint8_t fps;
-}};
+// =============================================================================
+// MÉTADONNÉES ET CONSTANTES
+// =============================================================================
 
-// Métadonnées {SENSOR_INFO['name'].upper()}
-static const SensorMetadata {SENSOR_INFO['name']}_metadata = {{
-    .name = "{SENSOR_INFO['name']}",
-    .manufacturer = "{SENSOR_INFO['manufacturer']}",
-    .pid = 0x{SENSOR_INFO['pid']:04X},
-    .i2c_address = 0x{SENSOR_INFO['i2c_address']:02X},
-    .lane_count = {SENSOR_INFO['lane_count']},
-    .bayer_pattern = {SENSOR_INFO['bayer_pattern']},
-    .lane_bitrate_mbps = {SENSOR_INFO['lane_bitrate_mbps']},
-    .width = {SENSOR_INFO['width']},
-    .height = {SENSOR_INFO['height']},
-    .fps = {SENSOR_INFO['fps']},
-}};
-
-// Registres de contrôle
 namespace {SENSOR_INFO['name']}_regs {{
 '''
     
@@ -227,21 +200,6 @@ static const InitRegister {SENSOR_INFO['name']}_init_sequence[] = {{
     cpp_code += f'''
 }};
 
-// Table de gain
-static const uint32_t {SENSOR_INFO['name']}_gain_table[] = {{
-'''
-    
-    # Générer la table de gain
-    for i, gain in enumerate(GAIN_VALUES):
-        if i % 8 == 0:
-            cpp_code += '    '
-        cpp_code += f'{gain}, '
-        if (i + 1) % 8 == 0:
-            cpp_code += '\n'
-    
-    cpp_code += f'''
-}};
-
 // Mapping gain -> registres
 struct GainRegisters {{
     uint8_t fine;
@@ -260,17 +218,13 @@ static const GainRegisters {SENSOR_INFO['name']}_gain_map[] = {{
 }};
 
 // =============================================================================
-// CLASSE DRIVER {SENSOR_INFO['name'].upper()}
+// CLASSE DRIVER {SENSOR_INFO['name'].upper()} (bas niveau)
 // =============================================================================
 
 class {SENSOR_INFO['name'].upper()}Driver {{
 public:
     {SENSOR_INFO['name'].upper()}Driver(esphome::i2c::I2CDevice* i2c) : i2c_(i2c) {{}}
     
-    // Métadonnées
-    const SensorMetadata& get_metadata() const {{ return {SENSOR_INFO['name']}_metadata; }}
-    
-    // Initialisation
     esp_err_t init() {{
         ESP_LOGI(TAG, "Init {SENSOR_INFO['name'].upper()}");
         
@@ -292,7 +246,6 @@ public:
         return ESP_OK;
     }}
     
-    // Lecture de l'ID
     esp_err_t read_id(uint16_t* pid) {{
         uint8_t pid_h, pid_l;
         
@@ -306,18 +259,14 @@ public:
         return ESP_OK;
     }}
     
-    // Contrôle du streaming
     esp_err_t start_stream() {{
-        ESP_LOGI(TAG, "Start stream");
         return write_register({SENSOR_INFO['name']}_regs::STREAM_MODE, 0x01);
     }}
     
     esp_err_t stop_stream() {{
-        ESP_LOGI(TAG, "Stop stream");
         return write_register({SENSOR_INFO['name']}_regs::STREAM_MODE, 0x00);
     }}
     
-    // Contrôle du gain
     esp_err_t set_gain(uint32_t gain_index) {{
         if (gain_index >= sizeof({SENSOR_INFO['name']}_gain_map) / sizeof(GainRegisters)) {{
             gain_index = (sizeof({SENSOR_INFO['name']}_gain_map) / sizeof(GainRegisters)) - 1;
@@ -335,7 +284,6 @@ public:
         return ret;
     }}
     
-    // Contrôle de l'exposition
     esp_err_t set_exposure(uint32_t exposure) {{
         uint8_t exp_h = (exposure >> 12) & 0x0F;
         uint8_t exp_m = (exposure >> 4) & 0xFF;
@@ -351,7 +299,6 @@ public:
         return ret;
     }}
     
-    // I2C bas niveau
     esp_err_t write_register(uint16_t reg, uint8_t value) {{
         uint8_t data[3] = {{
             static_cast<uint8_t>((reg >> 8) & 0xFF),
@@ -381,15 +328,45 @@ private:
     static constexpr const char* TAG = "{SENSOR_INFO['name'].upper()}";
 }};
 
-}}  // namespace mipi_camera
+// =============================================================================
+// ADAPTER - Implémente ISensorDriver pour {SENSOR_INFO['name'].upper()}
+// =============================================================================
+
+class {SENSOR_INFO['name'].upper()}Adapter : public ISensorDriver {{
+public:
+    {SENSOR_INFO['name'].upper()}Adapter(i2c::I2CDevice* i2c) : driver_(i2c) {{}}
+    
+    const char* get_name() const override {{ return "{SENSOR_INFO['name']}"; }}
+    uint16_t get_pid() const override {{ return 0x{SENSOR_INFO['pid']:04X}; }}
+    uint8_t get_i2c_address() const override {{ return 0x{SENSOR_INFO['i2c_address']:02X}; }}
+    uint8_t get_lane_count() const override {{ return {SENSOR_INFO['lane_count']}; }}
+    uint8_t get_bayer_pattern() const override {{ return {SENSOR_INFO['bayer_pattern']}; }}
+    uint16_t get_lane_bitrate_mbps() const override {{ return {SENSOR_INFO['lane_bitrate_mbps']}; }}
+    uint16_t get_width() const override {{ return {SENSOR_INFO['width']}; }}
+    uint16_t get_height() const override {{ return {SENSOR_INFO['height']}; }}
+    uint8_t get_fps() const override {{ return {SENSOR_INFO['fps']}; }}
+    
+    esp_err_t init() override {{ return driver_.init(); }}
+    esp_err_t read_id(uint16_t* pid) override {{ return driver_.read_id(pid); }}
+    esp_err_t start_stream() override {{ return driver_.start_stream(); }}
+    esp_err_t stop_stream() override {{ return driver_.stop_stream(); }}
+    esp_err_t set_gain(uint32_t gain_index) override {{ return driver_.set_gain(gain_index); }}
+    esp_err_t set_exposure(uint32_t exposure) override {{ return driver_.set_exposure(exposure); }}
+    esp_err_t write_register(uint16_t reg, uint8_t value) override {{ return driver_.write_register(reg, value); }}
+    esp_err_t read_register(uint16_t reg, uint8_t* value) override {{ return driver_.read_register(reg, value); }}
+    
+private:
+    {SENSOR_INFO['name'].upper()}Driver driver_;
+}};
+
+}}  // namespace tab5_camera
 }}  // namespace esphome
 '''
     
     return cpp_code
 
-
 # ============================================================================
-# FONCTION D'EXPORT
+# FONCTIONS D'EXPORT
 # ============================================================================
 
 def get_sensor_info():
