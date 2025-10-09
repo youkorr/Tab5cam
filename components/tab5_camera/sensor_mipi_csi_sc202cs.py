@@ -159,12 +159,8 @@ def generate_driver_cpp():
 // Resolution: {SENSOR_INFO['width']}x{SENSOR_INFO['height']}@{SENSOR_INFO['fps']}fps
 // =============================================================================
 
-#pragma once
-
-#include <cstdint>
-#include "esp_err.h"
-#include "esphome/components/i2c/i2c.h"
-#include "tab5_camera.h"
+// Ce code est injecté dans le contexte de compilation de tab5_camera
+// Les déclarations de tab5_camera.h sont déjà disponibles
 
 namespace esphome {{
 namespace tab5_camera {{
