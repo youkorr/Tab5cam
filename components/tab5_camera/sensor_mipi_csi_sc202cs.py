@@ -264,13 +264,13 @@ namespace {SENSOR_INFO['name']}_regs {{
 }}
 
 // Séquence d'initialisation
-struct InitRegister {{
+struct {SENSOR_INFO['name'].upper()}InitRegister {{
     uint16_t addr;
     uint8_t value;
     uint16_t delay_ms;
 }};
 
-static const InitRegister {SENSOR_INFO['name']}_init_sequence[] = {{
+static const {SENSOR_INFO['name'].upper()}InitRegister {SENSOR_INFO['name']}_init_sequence[] = {{
 '''
     
     # Générer la séquence d'initialisation
@@ -281,13 +281,13 @@ static const InitRegister {SENSOR_INFO['name']}_init_sequence[] = {{
 }};
 
 // Mapping gain -> registres
-struct GainRegisters {{
+struct {SENSOR_INFO['name'].upper()}GainRegisters {{
     uint8_t fine;
     uint8_t coarse;
     uint8_t analog;
 }};
 
-static const GainRegisters {SENSOR_INFO['name']}_gain_map[] = {{
+static const {SENSOR_INFO['name'].upper()}GainRegisters {SENSOR_INFO['name']}_gain_map[] = {{
 '''
     
     # Générer le mapping de gain
@@ -308,7 +308,7 @@ public:
     esp_err_t init() {{
         ESP_LOGI(TAG, "Init {SENSOR_INFO['name'].upper()}");
         
-        for (size_t i = 0; i < sizeof({SENSOR_INFO['name']}_init_sequence) / sizeof(InitRegister); i++) {{
+        for (size_t i = 0; i < sizeof({SENSOR_INFO['name']}_init_sequence) / sizeof({SENSOR_INFO['name'].upper()}InitRegister); i++) {{
             const auto& reg = {SENSOR_INFO['name']}_init_sequence[i];
             
             if (reg.delay_ms > 0) {{
@@ -348,8 +348,8 @@ public:
     }}
     
     esp_err_t set_gain(uint32_t gain_index) {{
-        if (gain_index >= sizeof({SENSOR_INFO['name']}_gain_map) / sizeof(GainRegisters)) {{
-            gain_index = (sizeof({SENSOR_INFO['name']}_gain_map) / sizeof(GainRegisters)) - 1;
+        if (gain_index >= sizeof({SENSOR_INFO['name']}_gain_map) / sizeof({SENSOR_INFO['name'].upper()}GainRegisters)) {{
+            gain_index = (sizeof({SENSOR_INFO['name']}_gain_map) / sizeof({SENSOR_INFO['name'].upper()}GainRegisters)) - 1;
         }}
         
         const auto& gain = {SENSOR_INFO['name']}_gain_map[gain_index];
