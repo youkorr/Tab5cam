@@ -2,6 +2,8 @@
 #include "esphome/core/log.h"
 #include "esphome/core/application.h"
 
+// Inclusion du code généré pour les drivers
+// Ce fichier sera créé automatiquement par __init__.py
 #include "tab5_camera_drivers_generated.h"
 
 #ifdef USE_ESP32_VARIANT_ESP32P4
@@ -16,8 +18,8 @@ static const char *const TAG = "tab5_camera";
 // ============================================================================
 
 void Tab5Camera::setup() {
-  ESP_LOGI(TAG, " Init MIPI Camera");
-  ESP_LOGI(TAG, " Sensor type: %s", this->sensor_type_.c_str());
+  ESP_LOGI(TAG, "🎥 Init MIPI Camera");
+  ESP_LOGI(TAG, "   Sensor type: %s", this->sensor_type_.c_str());
   
   // 1. Init pins
   if (this->reset_pin_ != nullptr) {
@@ -30,48 +32,48 @@ void Tab5Camera::setup() {
   
   // 2. Créer le driver du sensor via factory
   if (!this->create_sensor_driver_()) {
-    ESP_LOGE(TAG, " Driver creation failed");
+    ESP_LOGE(TAG, "❌ Driver creation failed");
     this->mark_failed();
     return;
   }
   
   // 3. Init sensor
   if (!this->init_sensor_()) {
-    ESP_LOGE(TAG, " Sensor init failed");
+    ESP_LOGE(TAG, "❌ Sensor init failed");
     this->mark_failed();
     return;
   }
   
   // 4. Init LDO
   if (!this->init_ldo_()) {
-    ESP_LOGE(TAG, " LDO init failed");
+    ESP_LOGE(TAG, "❌ LDO init failed");
     this->mark_failed();
     return;
   }
   
   // 5. Init CSI
   if (!this->init_csi_()) {
-    ESP_LOGE(TAG, " CSI init failed");
+    ESP_LOGE(TAG, "❌ CSI init failed");
     this->mark_failed();
     return;
   }
   
   // 6. Init ISP
   if (!this->init_isp_()) {
-    ESP_LOGE(TAG, " ISP init failed");
+    ESP_LOGE(TAG, "❌ ISP init failed");
     this->mark_failed();
     return;
   }
   
   // 7. Allouer buffers
   if (!this->allocate_buffer_()) {
-    ESP_LOGE(TAG, " Buffer alloc failed");
+    ESP_LOGE(TAG, "❌ Buffer alloc failed");
     this->mark_failed();
     return;
   }
   
   this->initialized_ = true;
-  ESP_LOGI(TAG, " Camera ready (%ux%u)", this->width_, this->height_);
+  ESP_LOGI(TAG, "✅ Camera ready (%ux%u)", this->width_, this->height_);
 }
 
 bool Tab5Camera::create_sensor_driver_() {
@@ -316,7 +318,7 @@ bool Tab5Camera::start_streaming() {
   }
   
   this->streaming_ = true;
-  ESP_LOGI(TAG, " Streaming active");
+  ESP_LOGI(TAG, "✅ Streaming active");
   return true;
 }
 
@@ -370,7 +372,7 @@ void Tab5Camera::loop() {
       float sensor_fps = this->total_frames_received_ / 3.0f;
       float ready_rate = (float)ready_count / (float)(ready_count + not_ready_count) * 100.0f;
       
-      ESP_LOGI(TAG, " Sensor: %.1f fps | frame_ready: %.1f%% du temps", 
+      ESP_LOGI(TAG, "📷 Sensor: %.1f fps | frame_ready: %.1f%% du temps", 
                sensor_fps, ready_rate);
       
       this->total_frames_received_ = 0;
