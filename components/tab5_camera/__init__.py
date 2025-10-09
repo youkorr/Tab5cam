@@ -193,11 +193,11 @@ namespace esphome {{
 namespace tab5_camera {{
 
 // =============================================================================
-// FONCTION FACTORY GLOBALE
+// FONCTION FACTORY GLOBALE (inline pour éviter définitions multiples)
 // Créée automatiquement depuis tous les sensors disponibles
 // =============================================================================
 
-ISensorDriver* create_sensor_driver(const std::string& sensor_type, i2c::I2CDevice* i2c) {{
+inline ISensorDriver* create_sensor_driver(const std::string& sensor_type, i2c::I2CDevice* i2c) {{
 '''
     
     # Ajouter les conditions pour chaque sensor
@@ -230,8 +230,10 @@ ISensorDriver* create_sensor_driver(const std::string& sensor_type, i2c::I2CDevi
     with open(generated_file_path, 'w') as f:
         f.write("// FICHIER AUTO-GÉNÉRÉ - NE PAS MODIFIER MANUELLEMENT\n")
         f.write("// Généré par __init__.py lors de la compilation ESPHome\n\n")
-        f.write("#pragma once\n\n")
+        f.write("#ifndef TAB5_CAMERA_DRIVERS_GENERATED_H\n")
+        f.write("#define TAB5_CAMERA_DRIVERS_GENERATED_H\n\n")
         f.write(complete_code)
+        f.write("\n#endif  // TAB5_CAMERA_DRIVERS_GENERATED_H\n")
     
     # Build flags pour ESP32-P4
     cg.add_build_flag("-DBOARD_HAS_PSRAM")
