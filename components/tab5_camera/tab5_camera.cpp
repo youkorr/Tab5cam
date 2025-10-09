@@ -362,8 +362,6 @@ bool Tab5Camera::capture_frame() {
   return was_ready;
 }
 
-#endif  // USE_ESP32_VARIANT_ESP32P4
-
 void Tab5Camera::loop() {
   // Géré par callbacks ISR
   
@@ -396,22 +394,6 @@ void Tab5Camera::loop() {
 
 #endif  // USE_ESP32_VARIANT_ESP32P4
 
-void Tab5Camera::loop() {
-  // Géré par callbacks ISR
-  
-  // Debug: Logger le FPS du sensor
-  if (this->streaming_) {
-    uint32_t now = millis();
-    if (now - this->last_frame_log_time_ >= 3000) {  // Toutes les 3 secondes
-      float sensor_fps = this->total_frames_received_ / 3.0f;
-      ESP_LOGI(TAG, "📷 Sensor FPS: %.1f frames/sec (production du sensor)", sensor_fps);
-      
-      this->total_frames_received_ = 0;
-      this->last_frame_log_time_ = now;
-    }
-  }
-}
-
 void Tab5Camera::dump_config() {
   ESP_LOGCONFIG(TAG, "MIPI Camera:");
   if (this->sensor_driver_) {
@@ -429,9 +411,6 @@ void Tab5Camera::dump_config() {
 
 }  // namespace tab5_camera
 }  // namespace esphome
-
-#endif  // USE_ESP32_VARIANT_ESP32P4
-
 
 
 
