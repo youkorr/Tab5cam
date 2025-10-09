@@ -2,8 +2,8 @@
 #include "esphome/core/log.h"
 #include "esphome/core/application.h"
 
-// Les drivers auto-générés s'incluent ici via la compilation
-// Chaque sensor_mipi_csi_XXX.py génère son driver qui implémente ISensorDriver
+// Les drivers auto-générés sont inclus via le système de build
+// Chaque sensor génère sa propre implémentation de create_sensor_driver()
 
 #ifdef USE_ESP32_VARIANT_ESP32P4
 
@@ -13,84 +13,7 @@ namespace tab5_camera {
 static const char *const TAG = "tab5_camera";
 
 // ============================================================================
-// ADAPTATEUR POUR CONNECTER LE DRIVER AUTO-GÉNÉRÉ À L'INTERFACE
-// ============================================================================
-
-// Include du driver généré (le nom du fichier dépend du sensor)
-// Ceci sera injecté par le système de build selon sensor_type_
-#ifdef SENSOR_SC202CS
-  //#include "sensor_sc202cs_generated.h"
-  using namespace esphome::mipi_camera;
-  
-  class SC202CSAdapter : public ISensorDriver {
-  public:
-    SC202CSAdapter(i2c::I2CDevice* i2c) : driver_(i2c) {}
-    
-    const char* get_name() const override { 
-      return driver_.get_metadata().name; 
-    }
-    uint16_t get_pid() const override { 
-      return driver_.get_metadata().pid; 
-    }
-    uint8_t get_i2c_address() const override { 
-      return driver_.get_metadata().i2c_address; 
-    }
-    uint8_t get_lane_count() const override { 
-      return driver_.get_metadata().lane_count; 
-    }
-    uint8_t get_bayer_pattern() const override { 
-      return driver_.get_metadata().bayer_pattern; 
-    }
-    uint16_t get_lane_bitrate_mbps() const override { 
-      return driver_.get_metadata().lane_bitrate_mbps; 
-    }
-    uint16_t get_width() const override { 
-      return driver_.get_metadata().width; 
-    }
-    uint16_t get_height() const override { 
-      return driver_.get_metadata().height; 
-    }
-    uint8_t get_fps() const override { 
-      return driver_.get_metadata().fps; 
-    }
-    
-    esp_err_t init() override { 
-      return driver_.init(); 
-    }
-    esp_err_t read_id(uint16_t* pid) override { 
-      return driver_.read_id(pid); 
-    }
-    esp_err_t start_stream() override { 
-      return driver_.start_stream(); 
-    }
-    esp_err_t stop_stream() override { 
-      return driver_.stop_stream(); 
-    }
-    esp_err_t set_gain(uint32_t gain_index) override { 
-      return driver_.set_gain(gain_index); 
-    }
-    esp_err_t set_exposure(uint32_t exposure) override { 
-      return driver_.set_exposure(exposure); 
-    }
-    esp_err_t write_register(uint16_t reg, uint8_t value) override { 
-      return driver_.write_register(reg, value); 
-    }
-    esp_err_t read_register(uint16_t reg, uint8_t* value) override { 
-      return driver_.read_register(reg, value); 
-    }
-    
-  private:
-    SC202CSDriver driver_;
-  };
-#endif
-
-#ifdef SENSOR_OV5640
-  #include "sensor_ov5640_generated.h"
-  // Même pattern pour OV5640
-#endif
-
-// ============================================================================
-// IMPLÉMENTATION TAB5 CAMERA (GÉNÉRIQUE)
+// IMPLÉMENTATION TAB5 CAMERA (GÉNÉRIQUE - AUCUNE RÉFÉRENCE AUX SENSORS)
 // ============================================================================
 
 void Tab5Camera::setup() {
@@ -108,7 +31,7 @@ void Tab5Camera::setup() {
     delay(20);
   }
   
-  // 2. Créer le driver du sensor
+  // 2. Créer le driver du sensor via factory
   if (!this->create_sensor_driver_()) {
     ESP_LOGE(TAG, "❌ Driver creation failed");
     this->mark_failed();
@@ -164,25 +87,17 @@ void Tab5Camera::setup() {
 bool Tab5Camera::create_sensor_driver_() {
   ESP_LOGI(TAG, "Creating driver for: %s", this->sensor_type_.c_str());
   
-  // Factory pattern - créer le bon driver selon sensor_type_
-  #ifdef SENSOR_SC202CS
-  if (this->sensor_type_ == "sc202cs") {
-    this->sensor_driver_ = new SC202CSAdapter(this);
-    ESP_LOGI(TAG, "✓ SC202CS driver created");
-    return true;
-  }
-  #endif
+  // Appel à la factory function fournie par le code généré
+  // Cette fonction est implémentée dans le code généré par chaque sensor
+  this->sensor_driver_ = create_sensor_driver(this->sensor_type_, this);
   
-  #ifdef SENSOR_OV5640
-  if (this->sensor_type_ == "ov5640") {
-    // this->sensor_driver_ = new OV5640Adapter(this);
-    ESP_LOGI(TAG, "✓ OV5640 driver created");
-    return true;
+  if (this->sensor_driver_ == nullptr) {
+    ESP_LOGE(TAG, "Unknown or unavailable sensor: %s", this->sensor_type_.c_str());
+    return false;
   }
-  #endif
   
-  ESP_LOGE(TAG, "Unknown sensor: %s", this->sensor_type_.c_str());
-  return false;
+  ESP_LOGI(TAG, "✓ Driver created for: %s", this->sensor_driver_->get_name());
+  return true;
 }
 
 bool Tab5Camera::init_sensor_() {
