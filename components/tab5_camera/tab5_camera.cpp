@@ -2,8 +2,6 @@
 #include "esphome/core/log.h"
 #include "esphome/core/application.h"
 
-// Inclusion du code généré pour les drivers
-// Ce fichier sera créé automatiquement par __init__.py
 #include "tab5_camera_drivers_generated.h"
 
 #ifdef USE_ESP32_VARIANT_ESP32P4
